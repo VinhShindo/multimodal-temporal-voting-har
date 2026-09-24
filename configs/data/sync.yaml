@@ -1,0 +1,7 @@
+# Đồng bộ 3 modality theo timestamp
+master_timeline:
+  unit: seconds
+  tolerance_ms: 20        # sai số cho phép khi align
+
+resample:
+  target_rate: 30         # đưa tất cả về 30Hz

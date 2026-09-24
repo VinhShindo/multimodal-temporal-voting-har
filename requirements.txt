@@ -1,0 +1,19 @@
+# Core
+numpy>=1.24
+pandas>=2.0
+pyyaml>=6.0
+tqdm>=4.65
+scikit-learn>=1.3
+
+# Deep learning
+torch>=2.1
+torchvision>=0.16
+pytorch-lightning>=2.1
+
+# Video
+decord>=0.6.0
+opencv-python>=4.8
+
+# Utils
+rich>=13.0
+python-dotenv>=1.0

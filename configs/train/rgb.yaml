@@ -1,0 +1,8 @@
+modality: rgb
+epochs: 50
+batch_size: 8
+optimizer: adamw
+lr: 1.0e-4
+weight_decay: 0.05
+scheduler: cosine
+early_stop_patience: 10

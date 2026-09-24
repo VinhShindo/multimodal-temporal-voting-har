@@ -1,0 +1,2 @@
+kernel: 5              # temporal neighborhood
+method: moving_average

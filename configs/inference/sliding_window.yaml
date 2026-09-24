@@ -1,0 +1,4 @@
+window:
+  size_sec: 2.0
+  step_sec: 0.5
+  overlap: 0.75

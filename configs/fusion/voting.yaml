@@ -1,0 +1,2 @@
+method: weighted_probability   # hard | average | weighted
+temporal_buffer: 5              # số window cho temporal voting

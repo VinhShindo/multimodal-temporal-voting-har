@@ -1,0 +1,6 @@
+name: videomae
+backend: videomae_v2
+backbone: ViT-L/16
+pretrained: true
+num_classes: 14
+dropout: 0.1

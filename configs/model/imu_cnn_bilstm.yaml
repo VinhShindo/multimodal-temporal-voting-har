@@ -1,0 +1,14 @@
+name: cnn_bilstm
+in_channels: 6            # ax,ay,az,gx,gy,gz
+num_classes: 14
+
+cnn:
+  channels: [64, 128, 128]
+  kernel_size: 5
+
+lstm:
+  hidden: 128
+  num_layers: 2
+  bidirectional: true
+
+dropout: 0.3

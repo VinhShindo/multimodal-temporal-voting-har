@@ -1,0 +1,18 @@
+# SINGLE SOURCE OF TRUTH — mọi module đọc file này
+classes:
+  0:  standing
+  1:  sitting
+  2:  lying
+  3:  walking
+  4:  running
+  5:  standing_up
+  6:  sitting_down
+  7:  drinking
+  8:  using_phone
+  9:  picking_object
+  10: carrying_object
+  11: waving_hand
+  12: falling
+  13: no_action
+
+num_classes: 14

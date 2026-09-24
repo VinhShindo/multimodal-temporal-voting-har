@@ -1,0 +1,8 @@
+modality: imu
+epochs: 60
+batch_size: 64
+optimizer: adam
+lr: 1.0e-3
+weight_decay: 1.0e-5
+scheduler: reduce_on_plateau
+early_stop_patience: 10

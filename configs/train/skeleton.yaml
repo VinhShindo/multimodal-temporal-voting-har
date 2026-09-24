@@ -1,0 +1,9 @@
+modality: skeleton
+epochs: 80
+batch_size: 32
+optimizer: sgd
+lr: 0.1
+momentum: 0.9
+weight_decay: 1.0e-4
+scheduler: cosine
+early_stop_patience: 15

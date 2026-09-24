@@ -1,0 +1,4 @@
+# Subject-based split — 1 subject chỉ ở 1 split
+train_subjects: []
+val_subjects:   []
+test_subjects:  []

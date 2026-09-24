@@ -1,0 +1,17 @@
+modality: rgb
+
+video:
+  fps: 30
+  resolution: [1280, 720]
+
+sampling:
+  window_tau: 64          # số frame gốc
+  stride: 4               # lấy mẫu cách 4 frame
+  num_frames: 16          # T = tau / stride
+
+transform:
+  resize: [224, 224]
+  crop: center
+  normalize:
+    mean: [0.485, 0.456, 0.406]
+    std:  [0.229, 0.224, 0.225]

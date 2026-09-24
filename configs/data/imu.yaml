@@ -1,0 +1,13 @@
+modality: imu
+
+sensor:
+  sampling_rate: 100      # Hz
+  channels: [ax, ay, az, gx, gy, gz]
+
+window:
+  size: 200               # 2s @ 100Hz
+  step: 50                # 0.5s
+
+normalize:
+  method: zscore          # (x - mu) / sigma
+  stats_from: train       # ★ chỉ tính từ train

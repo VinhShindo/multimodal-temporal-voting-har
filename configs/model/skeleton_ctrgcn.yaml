@@ -1,0 +1,5 @@
+name: ctrgcn
+num_joints: 48
+in_channels: 3
+num_classes: 14
+graph_layout: mediapipe_upper

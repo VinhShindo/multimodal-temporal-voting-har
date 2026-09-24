@@ -1,0 +1,9 @@
+# Grid search weight trên validation set
+grid:
+  - [0.34, 0.33, 0.33]
+  - [0.40, 0.30, 0.30]
+  - [0.50, 0.25, 0.25]
+  - [0.50, 0.30, 0.20]
+  - [0.60, 0.20, 0.20]
+
+modalities: [rgb, skeleton, imu]

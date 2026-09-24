@@ -1,0 +1,13 @@
+modality: skeleton
+
+layout:
+  num_joints: 48          # MediaPipe: 42 hand + 6 upper body
+  coords: [x, y, z]
+
+normalize:
+  root_joint: hip         # hoặc torso
+  scale_ref: shoulder     # hoặc torso
+
+sequence:
+  length: 64              # số frame cố định
+  interpolation: linear
