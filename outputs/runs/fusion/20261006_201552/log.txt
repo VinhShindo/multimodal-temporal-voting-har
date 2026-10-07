@@ -1,0 +1,110 @@
+[20:15:52] ======================================================================
+[20:15:52]   FUSION BENCHMARK — 20261006_201552
+[20:15:52] ======================================================================
+[20:15:52]   Runs root:     outputs/runs
+[20:15:52]   Weight step:   0.1
+[20:15:52]   Min samples:   500
+[20:15:52]   Run dir:       outputs\runs\fusion\20261006_201552
+[20:15:52] 
+[20:15:52] ──────────────────────────────────────────────────────────────────────
+[20:15:52]   LOADING PREDICTIONS
+[20:15:52] ──────────────────────────────────────────────────────────────────────
+[20:15:52]   [ok]   skeleton: 3263 clips  (run=20261004_211922_R2)
+[20:15:53]   [ok]   imu: 3205 clips  (run=20260927_214401)
+[20:15:53]   [ok]   rgb: 3263 clips  (run=20261002_225214_mc3_18_resume_from_e6)
+[20:15:53] 
+[20:15:53]   Modalities dùng:  ['skeleton', 'imu', 'rgb']
+[20:15:53]   Num samples:      3205
+[20:15:53]   Num classes:      32
+[20:15:53] 
+[20:15:53] ──────────────────────────────────────────────────────────────────────
+[20:15:53]   EXPERIMENTS
+[20:15:53] ──────────────────────────────────────────────────────────────────────
+[20:15:53] 
+[20:15:53] [E1] Skeleton only  (['skeleton'])
+[20:15:53]   · single     acc=0.8256  f1_macro=0.8173  f1_weighted=0.8284
+[20:15:53]   → BEST: single  f1_macro=0.8173
+[20:15:55]   Saved artifacts → E1/
+[20:15:55] 
+[20:15:55] [E2] IMU only  (['imu'])
+[20:15:55]   · single     acc=0.9797  f1_macro=0.9821  f1_weighted=0.9799
+[20:15:55]   → BEST: single  f1_macro=0.9821
+[20:15:58]   Saved artifacts → E2/
+[20:15:58] 
+[20:15:58] [E3] RGB only  (['rgb'])
+[20:15:58]   · single     acc=0.8281  f1_macro=0.8271  f1_weighted=0.8101
+[20:15:58]   → BEST: single  f1_macro=0.8271
+[20:16:00]   Saved artifacts → E3/
+[20:16:00] 
+[20:16:00] [E4] SK + IMU  (['skeleton', 'imu'])
+[20:16:00]   Grid search: 11 điểm, best score=0.9932
+[20:16:00]   Best weights: {'skeleton': 0.4, 'imu': 0.6}
+[20:16:00]   · hard       acc=0.9913  f1_macro=0.9916  f1_weighted=0.9913
+[20:16:00]   · average    acc=0.9910  f1_macro=0.9913  f1_weighted=0.9909
+[20:16:00]   · weighted   acc=0.9922  f1_macro=0.9932  f1_weighted=0.9922
+[20:16:00]   → BEST: weighted  f1_macro=0.9932
+[20:16:03]   Saved artifacts → E4/
+[20:16:03] 
+[20:16:03] [E5] SK + RGB  (['skeleton', 'rgb'])
+[20:16:03]   Grid search: 11 điểm, best score=0.9252
+[20:16:03]   Best weights: {'skeleton': 0.2, 'rgb': 0.8}
+[20:16:03]   · hard       acc=0.9179  f1_macro=0.9004  f1_weighted=0.9170
+[20:16:03]   · average    acc=0.9192  f1_macro=0.9019  f1_weighted=0.9183
+[20:16:03]   · weighted   acc=0.9239  f1_macro=0.9252  f1_weighted=0.9242
+[20:16:03]   → BEST: weighted  f1_macro=0.9252
+[20:16:05]   Saved artifacts → E5/
+[20:16:05] 
+[20:16:05] [E6] IMU + RGB  (['imu', 'rgb'])
+[20:16:05]   Grid search: 11 điểm, best score=0.9943
+[20:16:05]   Best weights: {'imu': 0.5, 'rgb': 0.5}
+[20:16:05]   · hard       acc=0.9934  f1_macro=0.9943  f1_weighted=0.9934
+[20:16:05]   · average    acc=0.9934  f1_macro=0.9943  f1_weighted=0.9934
+[20:16:05]   · weighted   acc=0.9934  f1_macro=0.9943  f1_weighted=0.9934
+[20:16:05]   → BEST: hard  f1_macro=0.9943
+[20:16:07]   Saved artifacts → E6/
+[20:16:07] 
+[20:16:07] [E7] SK + IMU + RGB  (['skeleton', 'imu', 'rgb'])
+[20:16:07]   Grid search: 66 điểm, best score=0.9960
+[20:16:07]   Best weights: {'skeleton': 0.2, 'imu': 0.5, 'rgb': 0.30000000000000004}
+[20:16:07]   · hard       acc=0.9838  f1_macro=0.9841  f1_weighted=0.9838
+[20:16:07]   · average    acc=0.9906  f1_macro=0.9916  f1_weighted=0.9906
+[20:16:07]   · weighted   acc=0.9953  f1_macro=0.9960  f1_weighted=0.9953
+[20:16:07]   → BEST: weighted  f1_macro=0.9960
+[20:16:10]   Saved artifacts → E7/
+[20:16:10] 
+[20:16:10] ✓ Saved results.csv → results.csv
+[20:16:10] 
+[20:16:10] ======================================================================
+[20:16:10]   SUMMARY
+[20:16:10] ======================================================================
+[20:16:10] 
+[20:16:10]   Exp   Method       F1_macro      Acc  Weights
+[20:16:10]   ──────────────────────────────────────────────────────────────────
+[20:16:10]   E1    single         0.8173   0.8256  {"skeleton": 1.0}
+[20:16:10]   E2    single         0.9821   0.9797  {"imu": 1.0}
+[20:16:10]   E3    single         0.8271   0.8281  {"rgb": 1.0}
+[20:16:10]   E4    hard           0.9916   0.9913  {"skeleton": 0.5, "imu": 0.5}
+[20:16:10]   E4    average        0.9913   0.9910  {"skeleton": 0.5, "imu": 0.5}
+[20:16:10]   E4    weighted       0.9932   0.9922  {"skeleton": 0.4, "imu": 0.6}
+[20:16:10]   E5    hard           0.9004   0.9179  {"skeleton": 0.5, "rgb": 0.5}
+[20:16:10]   E5    average        0.9019   0.9192  {"skeleton": 0.5, "rgb": 0.5}
+[20:16:10]   E5    weighted       0.9252   0.9239  {"skeleton": 0.2, "rgb": 0.8}
+[20:16:10]   E6    hard           0.9943   0.9934  {"imu": 0.5, "rgb": 0.5}
+[20:16:10]   E6    average        0.9943   0.9934  {"imu": 0.5, "rgb": 0.5}
+[20:16:10]   E6    weighted       0.9943   0.9934  {"imu": 0.5, "rgb": 0.5}
+[20:16:10]   E7    hard           0.9841   0.9838  {"skeleton": 0.333, "imu": 0.333, "rgb": 0.333}
+[20:16:10]   E7    average        0.9916   0.9906  {"skeleton": 0.333, "imu": 0.333, "rgb": 0.333}
+[20:16:10]   E7    weighted       0.9960   0.9953  {"skeleton": 0.2, "imu": 0.5, "rgb": 0.3}
+[20:16:10] 
+[20:16:10] ✓ Saved comparison.png → comparison.png
+[20:16:10] 
+[20:16:10] ======================================================================
+[20:16:10]   BEST OVERALL
+[20:16:10] ======================================================================
+[20:16:10]   Exp:      E7 — SK + IMU + RGB
+[20:16:10]   Method:   weighted
+[20:16:10]   Weights:  {"skeleton": 0.2, "imu": 0.5, "rgb": 0.3}
+[20:16:10]   F1_macro: 0.9960
+[20:16:10]   Accuracy: 0.9953
+[20:16:10] 
+[20:16:10]   Run dir: outputs\runs\fusion\20261006_201552

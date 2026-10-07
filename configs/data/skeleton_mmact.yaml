@@ -1,0 +1,14 @@
+dataset: mmact
+modality: skeleton
+
+layout:
+  num_joints: 17            # COCO
+  coords: [x, y, conf]
+
+normalize:
+  root_joints: [11, 12]     # hip L + hip R → midpoint
+  scale_joints: [5, 6]      # shoulder L + shoulder R → distance
+
+sequence:
+  target_len: 64            # resample về 64 frame
+  interpolation: linear

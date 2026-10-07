@@ -1,0 +1,82 @@
+{
+  "n_clips": 16488,
+  "class_distribution": {
+    "total": 16488,
+    "num_classes": 32,
+    "min_per_class": 200,
+    "max_per_class": 788,
+    "mean_per_class": 515.25,
+    "std_per_class": 176.38648913220962,
+    "counts": {
+      "carrying": 588,
+      "checking_time": 588,
+      "closing": 588,
+      "crouching": 588,
+      "drinking": 200,
+      "entering": 588,
+      "exiting": 586,
+      "fall": 588,
+      "jumping": 588,
+      "kicking": 588,
+      "loitering": 588,
+      "looking_around": 588,
+      "opening": 588,
+      "picking_up": 586,
+      "pocket_in": 200,
+      "pocket_out": 200,
+      "pointing": 588,
+      "pulling": 588,
+      "pushing": 588,
+      "running": 588,
+      "sitting": 200,
+      "sitting_down": 200,
+      "standing": 586,
+      "standing_up": 200,
+      "talking": 586,
+      "talking_on_phone": 788,
+      "throwing": 588,
+      "transferring_object": 584,
+      "using_pc": 200,
+      "using_phone": 788,
+      "walking": 588,
+      "waving_hand": 588
+    }
+  },
+  "video_metadata": {
+    "n_sampled": 200,
+    "n_valid": 200,
+    "n_missing": 0,
+    "duration": {
+      "min": 2.335669002335669,
+      "max": 23.023023023023026,
+      "mean": 7.26723248269946,
+      "median": 6.656656656656657
+    },
+    "fps": {
+      "min": 29.95,
+      "max": 29.97,
+      "mean": 29.968200000000007
+    },
+    "resolution": {
+      "widths": [
+        1920
+      ],
+      "heights": [
+        1080
+      ]
+    },
+    "frames": {
+      "min": 70,
+      "max": 690,
+      "mean": 217.785
+    }
+  },
+  "quality": {
+    "missing_file": 0,
+    "cant_open": 0,
+    "empty": 0,
+    "ok": 100,
+    "n_checked": 100,
+    "ok_pct": 100.0
+  }
+}

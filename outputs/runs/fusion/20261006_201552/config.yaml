@@ -1,0 +1,10 @@
+fusion:
+  candidates:
+  - skeleton
+  - imu
+  - rgb
+  weight_step: 0.1
+  select_metric: f1_macro
+  min_val_samples: 500
+output:
+  root: outputs/runs

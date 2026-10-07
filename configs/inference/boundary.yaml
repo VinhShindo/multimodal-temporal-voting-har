@@ -1,5 +1,0 @@
-# Skeleton boundary detection
-method: motion_energy
-threshold: 0.15
-min_duration_sec: 0.5
-smooth_kernel: 5

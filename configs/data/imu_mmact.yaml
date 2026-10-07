@@ -1,0 +1,14 @@
+dataset: mmact
+modality: imu
+
+sensor:
+  sampling_rate: 50         # Hz sau resample
+  channels: [ax, ay, az]    # acc_watch
+
+window:
+  size: 200                 # 4s @ 50Hz
+  step: 50                  # 1s
+
+normalize:
+  method: zscore
+  stats_from: train

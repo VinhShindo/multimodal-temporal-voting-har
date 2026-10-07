@@ -1,21 +1,16 @@
-"""Smoothing theo temporal neighborhood."""
+"""Temporal smoothing probs."""
 import numpy as np
-from typing import List
-
-from src.common.schema import Prediction
 
 
-def smooth(preds: List[Prediction], kernel: int = 5) -> List[Prediction]:
-    out = []
-    for i in range(len(preds)):
-        lo = max(0, i - kernel // 2)
-        hi = min(len(preds), i + kernel // 2 + 1)
-        probs = np.mean([preds[j].probabilities for j in range(lo, hi)], axis=0)
-        cid = int(probs.argmax())
-        p = preds[i]
-        out.append(Prediction(
-            window_id=p.window_id, start=p.start, end=p.end,
-            class_id=cid, class_name=p.class_name,
-            confidence=float(probs[cid]), probabilities=probs.tolist(),
-        ))
+def smooth_probs(probs_seq, kernel=5):
+    """probs_seq (N, C) → (N, C) moving average."""
+    if kernel <= 1 or len(probs_seq) < kernel:
+        return probs_seq
+    N = probs_seq.shape[0]
+    out = np.zeros_like(probs_seq)
+    half = kernel // 2
+    for i in range(N):
+        lo = max(0, i - half)
+        hi = min(N, i + half + 1)
+        out[i] = probs_seq[lo:hi].mean(axis=0)
     return out

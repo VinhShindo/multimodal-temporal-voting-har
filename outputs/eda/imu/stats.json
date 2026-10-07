@@ -1,0 +1,98 @@
+{
+  "n_clips": 15998,
+  "class_distribution": {
+    "total": 15998,
+    "num_classes": 32,
+    "min_per_class": 200,
+    "max_per_class": 768,
+    "mean_per_class": 499.9375,
+    "std_per_class": 168.47895197342757,
+    "counts": {
+      "carrying": 570,
+      "checking_time": 570,
+      "closing": 570,
+      "crouching": 570,
+      "drinking": 200,
+      "entering": 570,
+      "exiting": 568,
+      "fall": 566,
+      "jumping": 568,
+      "kicking": 568,
+      "loitering": 570,
+      "looking_around": 568,
+      "opening": 570,
+      "picking_up": 564,
+      "pocket_in": 200,
+      "pocket_out": 200,
+      "pointing": 568,
+      "pulling": 566,
+      "pushing": 568,
+      "running": 570,
+      "sitting": 200,
+      "sitting_down": 200,
+      "standing": 556,
+      "standing_up": 200,
+      "talking": 568,
+      "talking_on_phone": 768,
+      "throwing": 568,
+      "transferring_object": 566,
+      "using_pc": 200,
+      "using_phone": 768,
+      "walking": 570,
+      "waving_hand": 570
+    }
+  },
+  "sequence_length": {
+    "n_sampled": 500,
+    "min": 85,
+    "max": 1537,
+    "mean": 344.218,
+    "median": 298.5
+  },
+  "channel_stats": {
+    "n_samples_analyzed": 500,
+    "n_channel_samples": 172109,
+    "channels": {
+      "ax": {
+        "mean": 4.469353199005127,
+        "std": 6.516732692718506,
+        "min": -36.760379791259766,
+        "max": 77.8744125366211,
+        "p5": -7.597977161407471,
+        "p95": 11.37254524230957
+      },
+      "ay": {
+        "mean": -3.9644973278045654,
+        "std": 5.244926929473877,
+        "min": -73.11768341064453,
+        "max": 64.691162109375,
+        "p5": -10.478551864624023,
+        "p95": 4.244352340698242
+      },
+      "az": {
+        "mean": 1.5822641849517822,
+        "std": 4.766934871673584,
+        "min": -67.67115783691406,
+        "max": 50.951568603515625,
+        "p5": -5.763993263244629,
+        "p95": 8.86320686340332
+      }
+    }
+  },
+  "sampling_rate": {
+    "assumed_hz": 50,
+    "mean_sec": 7.164199999999999,
+    "median_sec": 6.15,
+    "min_sec": 2.62,
+    "max_sec": 30.74
+  },
+  "quality": {
+    "missing_file": 0,
+    "bad_shape": 0,
+    "nan_found": 0,
+    "too_short": 0,
+    "ok": 300,
+    "n_checked": 300,
+    "ok_pct": 100.0
+  }
+}

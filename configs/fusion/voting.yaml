@@ -1,2 +1,16 @@
-method: weighted_probability   # hard | average | weighted
-temporal_buffer: 5              # số window cho temporal voting
+# Fusion voting config
+fusion:
+  # Modalities có thể dùng
+  candidates: [skeleton, imu, rgb]
+
+  # Grid search weight step
+  weight_step: 0.1
+
+  # Metric để chọn best
+  select_metric: f1_macro
+
+  # Min samples để đưa modality vào fusion (bỏ qua quick-test runs)
+  min_val_samples: 500
+
+output:
+  root: outputs/runs

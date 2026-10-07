@@ -1,61 +1,108 @@
-"""3 kiểu voting: hard / average / weighted."""
-from typing import List, Optional
+"""
+3 phương pháp fusion voting:
+  - hard_majority:       argmax mỗi model → đếm phiếu
+  - average_probability: trung bình cộng probs
+  - weighted_probability: trung bình có trọng số
+"""
+from collections import Counter
+
 import numpy as np
 
-from src.common.schema import Prediction
-from src.common.classes import load_classes
+
+# ============================================================
+# Helpers
+# ============================================================
+def _get_N(probs_dict: dict) -> int:
+    return next(iter(probs_dict.values())).shape[0]
 
 
-def hard_majority(preds: List[Optional[Prediction]], cmap) -> int:
-    votes = {}
-    for p in preds:
-        if p is None:
-            continue
-        votes[p.class_id] = votes.get(p.class_id, 0) + 1
-    if not votes:
-        return 0
-    return max(votes, key=votes.get)
+def _get_C(probs_dict: dict) -> int:
+    return next(iter(probs_dict.values())).shape[1]
 
 
-def average_probability(preds: List[Optional[Prediction]], num_classes: int) -> np.ndarray:
-    valid = [np.array(p.probabilities) for p in preds if p is not None]
-    if not valid:
-        return np.ones(num_classes) / num_classes
-    return np.mean(valid, axis=0)
+# ============================================================
+# Hard majority
+# ============================================================
+def hard_majority(probs_dict: dict) -> np.ndarray:
+    """Mỗi model argmax, rồi vote. Trả về (N,) pred."""
+    N = _get_N(probs_dict)
+    mods = list(probs_dict.keys())
+
+    # argmax cho từng model
+    hard = {m: probs_dict[m].argmax(axis=-1) for m in mods}
+
+    fused = np.zeros(N, dtype=np.int64)
+    for i in range(N):
+        votes = [int(hard[m][i]) for m in mods]
+        # Tie-break: chọn class có tổng prob cao nhất (fallback)
+        counts = Counter(votes)
+        top_count = counts.most_common(1)[0][1]
+        candidates = [c for c, v in counts.items() if v == top_count]
+        if len(candidates) == 1:
+            fused[i] = candidates[0]
+        else:
+            # Tie: chọn class có sum prob cao nhất trong candidates
+            score = {}
+            for c in candidates:
+                score[c] = sum(probs_dict[m][i, c] for m in mods)
+            fused[i] = max(score, key=score.get)
+    return fused
 
 
-def weighted_probability(preds: List[Optional[Prediction]],
-                         weights: dict,
-                         num_classes: int) -> np.ndarray:
-    """weights: {"rgb": w1, "skeleton": w2, "imu": w3}, tổng = 1."""
-    total = np.zeros(num_classes)
-    for key, p in zip(["rgb", "skeleton", "imu"], preds):
-        if p is None:
-            continue
-        total += weights[key] * np.array(p.probabilities)
-    return total
+# ============================================================
+# Average probability
+# ============================================================
+def average_probability(probs_dict: dict) -> np.ndarray:
+    """Trung bình cộng probs → (N, C)."""
+    stack = np.stack(list(probs_dict.values()), axis=0)  # (M, N, C)
+    return stack.mean(axis=0)
 
 
-def fuse(record, method: str, cmap, weights: dict = None) -> Prediction:
-    preds = [record.rgb, record.skeleton, record.imu]
-    N = cmap.num_classes
+# ============================================================
+# Weighted probability
+# ============================================================
+def weighted_probability(probs_dict: dict, weights: dict) -> np.ndarray:
+    """Trung bình có trọng số. weights = {"skeleton": 0.4, ...}."""
+    mods = list(probs_dict.keys())
+    total_w = sum(weights.get(m, 0.0) for m in mods)
+    if total_w <= 0:
+        raise ValueError("Tổng weight phải > 0")
+
+    N = _get_N(probs_dict)
+    C = _get_C(probs_dict)
+    out = np.zeros((N, C), dtype=np.float32)
+    for m in mods:
+        w = weights.get(m, 0.0) / total_w
+        out += w * probs_dict[m]
+    return out
+
+
+# ============================================================
+# Unified API
+# ============================================================
+def fuse_probs(probs_dict: dict, method: str,
+               weights: dict = None) -> tuple:
+    """
+    Return: (fused_probs (N, C), fused_preds (N,)).
+    """
+    method = method.lower()
 
     if method == "hard":
-        cid = hard_majority(preds, cmap)
-        probs = np.zeros(N)
-        probs[cid] = 1.0
+        preds = hard_majority(probs_dict)
+        C = _get_C(probs_dict)
+        probs = np.eye(C, dtype=np.float32)[preds]
+
     elif method == "average":
-        probs = average_probability(preds, N)
-        cid = int(probs.argmax())
+        probs = average_probability(probs_dict)
+        preds = probs.argmax(axis=-1)
+
     elif method == "weighted":
-        probs = weighted_probability(preds, weights, N)
-        cid = int(probs.argmax())
+        if weights is None:
+            raise ValueError("Weighted voting cần weights dict")
+        probs = weighted_probability(probs_dict, weights)
+        preds = probs.argmax(axis=-1)
+
     else:
         raise ValueError(f"Unknown method: {method}")
 
-    return Prediction(
-        window_id=record.window_id, start=record.start, end=record.end,
-        class_id=cid, class_name=cmap.to_name(cid),
-        confidence=float(probs[cid]),
-        probabilities=probs.tolist(),
-    )
+    return probs, preds

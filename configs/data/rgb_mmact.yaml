@@ -1,0 +1,12 @@
+dataset: mmact
+modality: rgb
+
+sampling:
+  num_frames: 8               # 16 → 8 (verify nhanh)
+  stride: 1
+
+transform:
+  resize: 224                  # 224 → 96 (verify nhanh)
+  crop_pct: 0.875
+  mean: [0.45, 0.45, 0.45]
+  std:  [0.225, 0.225, 0.225]

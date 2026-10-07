@@ -1,0 +1,31 @@
+dataset: mmact
+modality: skeleton
+
+model:
+  name: ctrgcn_dual
+  arch: dual                   # ctrgcn | ctrgcn_head | dual  (CLI --arch ghi đè)
+  num_joints: 17
+  num_classes: 32
+  # in_channels do script tự suy ra từ --stream (dual=18, rich=11, joint_bone_motion=6)
+  dropout: 0.4                 # trước FC (baseline ctrgcn dùng 0.3 nếu không đặt)
+  part_drop: 0.1               # che ngẫu nhiên 10% token bộ phận khi train
+  drop_path: 0.1
+  tf_depth: 2
+  tf_heads: 4
+
+train:
+  epochs: 80
+  batch_size: 64
+  optimizer: adamw
+  lr: 0.0005
+  weight_decay: 0.0005         # giữ như run baseline để ablation sạch; thử 0.02 như một thí nghiệm riêng
+  grad_clip: 3.0
+  ema_decay: 0.999
+  aug_level: light             # none | light | strong
+  label_smoothing: 0.1
+  scheduler: cosine_warmup
+  warmup_epochs: 3
+  early_stop_patience: 15
+  head_lr_mult: 1.0
+
+output_dir: outputs/checkpoints/skeleton_mmact

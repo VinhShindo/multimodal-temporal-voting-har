@@ -1,0 +1,37 @@
+# configs/classes.yaml
+# MMAct Challenge 2021 — 32 classes (union quan sát từ subject1)
+classes:
+  0:  carrying
+  1:  checking_time
+  2:  closing
+  3:  crouching
+  4:  drinking
+  5:  entering
+  6:  exiting
+  7:  fall
+  8:  jumping
+  9:  kicking
+  10: loitering
+  11: looking_around
+  12: opening
+  13: picking_up
+  14: pocket_in
+  15: pocket_out
+  16: pointing
+  17: pulling
+  18: pushing
+  19: running
+  20: sitting
+  21: sitting_down
+  22: standing
+  23: standing_up
+  24: talking
+  25: talking_on_phone
+  26: throwing
+  27: transferring_object
+  28: using_pc
+  29: using_phone
+  30: walking
+  31: waving_hand
+
+num_classes: 32
