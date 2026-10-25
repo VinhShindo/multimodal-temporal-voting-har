@@ -1,0 +1,18 @@
+{
+  "modality": "imu",
+  "split": "cross_view",
+  "train_rows": 8946,
+  "val_rows": 2236,
+  "clip_id_overlap": 0,
+  "train_unique_events": 3889,
+  "val_unique_events": 972,
+  "physical_event_overlap": 0,
+  "audit_status": "PASS",
+  "excluded_imu_runs_without_explicit_split": 0,
+  "benchmark_mode": "train",
+  "requested_architectures": [
+    "tcn"
+  ],
+  "seed": 46,
+  "failed_architectures": []
+}

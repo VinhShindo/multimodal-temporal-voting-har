@@ -22,10 +22,31 @@ class DataProcessingPipeline:
         self.split = split
         self.log_fn = log_fn or print
 
-        self.skeleton = SkeletonProcessor(**(skeleton_cfg or {}))
-        self.imu = IMUProcessor(**(imu_cfg or {}))
-        self.rgb = RGBProcessor(**(rgb_cfg or {}))
+        self._skeleton_cfg = skeleton_cfg or {}
+        self._imu_cfg = imu_cfg or {}
+        self._rgb_cfg = rgb_cfg or {}
+        self._skeleton = None
+        self._imu = None
+        self._rgb = None
 
+    @property
+    def skeleton(self):
+        if self._skeleton is None:
+            self._skeleton = SkeletonProcessor(**self._skeleton_cfg)
+        return self._skeleton
+
+    @property
+    def imu(self):
+        if self._imu is None:
+            self._imu = IMUProcessor(**self._imu_cfg)
+        return self._imu
+
+    @property
+    def rgb(self):
+        if self._rgb is None:
+            self._rgb = RGBProcessor(**self._rgb_cfg)
+        return self._rgb
+        
     def log(self, msg=""):
         self.log_fn(msg)
 

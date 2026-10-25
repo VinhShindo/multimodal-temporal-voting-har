@@ -1,0 +1,2 @@
+run,result_type,architecture,stream,feature_set,split,seed,accuracy,f1_macro,f1_weighted,num_samples,parameters_m,best_epoch,train_seconds,run_dir,architecture_status,architecture_note,paper_reference
+20261023_024429_bench_20261023_024424_846490_ctrgcn_head,single,ctrgcn_head,rich,raw,cross_view,,0.9047406082289803,0.9034465438596084,0.9052573997894928,2236,2.49,52,1034.89,outputs/runs/skeleton/20261023_024429_bench_20261023_024424_846490_ctrgcn_head,custom_ablation,CTR-GCN plus project-specific part-token Transformer head.,Liu et al. 2021 (backbone only)

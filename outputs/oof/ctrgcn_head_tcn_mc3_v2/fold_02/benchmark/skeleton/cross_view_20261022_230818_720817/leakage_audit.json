@@ -1,0 +1,31 @@
+{
+  "modality": "skeleton",
+  "split": "cross_view",
+  "train_rows": 8946,
+  "val_rows": 2236,
+  "clip_id_overlap": 0,
+  "train_cameras": [
+    "cam1",
+    "cam2",
+    "cam3"
+  ],
+  "val_cameras": [
+    "cam1",
+    "cam2",
+    "cam3"
+  ],
+  "camera_overlap": [
+    "cam1",
+    "cam2",
+    "cam3"
+  ],
+  "camera_overlap_policy": "allowed_for_group_holdout",
+  "audit_status": "PASS",
+  "excluded_imu_runs_without_explicit_split": 0,
+  "benchmark_mode": "train",
+  "requested_architectures": [
+    "ctrgcn_head"
+  ],
+  "seed": 44,
+  "failed_architectures": []
+}

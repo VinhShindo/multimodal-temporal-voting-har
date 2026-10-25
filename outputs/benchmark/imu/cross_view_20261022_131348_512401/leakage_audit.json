@@ -1,0 +1,24 @@
+{
+  "modality": "imu",
+  "split": "cross_view",
+  "train_rows": 11182,
+  "val_rows": 3727,
+  "clip_id_overlap": 0,
+  "train_unique_events": 4861,
+  "val_unique_events": 1622,
+  "physical_event_overlap": 0,
+  "audit_status": "PASS",
+  "excluded_imu_runs_without_explicit_split": 0,
+  "benchmark_mode": "train",
+  "requested_architectures": [
+    "cnn_bilstm",
+    "cnn_bilstm_cbam",
+    "tcn",
+    "transformer",
+    "xtinyhar",
+    "inceptiontime",
+    "fckd"
+  ],
+  "seed": 42,
+  "failed_architectures": []
+}

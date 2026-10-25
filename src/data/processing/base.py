@@ -77,8 +77,9 @@ class StatsCollector:
             "skip_bad": self.skip_bad,
             "n_errors": len(self.errors),
         }
-        if self.shapes:
-            arr = np.array(self.shapes)
+        shape_rows = [shape for shape in self.shapes if len(shape) > 1]
+        if shape_rows:
+            arr = np.asarray(shape_rows)
             out["shape_min"] = arr.min(axis=0).tolist()
             out["shape_max"] = arr.max(axis=0).tolist()
             out["shape_mean"] = arr.mean(axis=0).round(1).tolist()

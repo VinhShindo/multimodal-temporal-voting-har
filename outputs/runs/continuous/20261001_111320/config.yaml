@@ -1,7 +1,0 @@
-sessions_root: data/processed/MMAct/continuous
-window_sec: 4.0
-step_sec: 1.0
-smooth_kernel: 3
-t_avg: 0.7
-min_duration: 1.0
-use_boundary: true

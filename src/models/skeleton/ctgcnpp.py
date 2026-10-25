@@ -186,7 +186,7 @@ class STGCNPP(nn.Module):
       Stage 6: 256  → 256   (stride=1)
     """
 
-    def __init__(self, num_classes=32, num_joints=17, in_channels=6):
+    def __init__(self, num_classes=35, num_joints=17, in_channels=6):
         super().__init__()
         V = num_joints
         A_phys = build_physical_adjacency(V)
@@ -248,7 +248,7 @@ class STGCNPP(nn.Module):
         return self.fc(x)
 
 
-def build_stgcnpp(num_classes=32, num_joints=17, in_channels=6):
+def build_stgcnpp(num_classes=35, num_joints=17, in_channels=6):
     return STGCNPP(num_classes=num_classes,
                    num_joints=num_joints,
                    in_channels=in_channels)
@@ -258,7 +258,7 @@ def build_stgcnpp(num_classes=32, num_joints=17, in_channels=6):
 # Sanity check
 # ============================================================
 if __name__ == "__main__":
-    m = build_stgcnpp(num_classes=32, num_joints=17, in_channels=6)
+    m = build_stgcnpp(num_classes=35, num_joints=17, in_channels=6)
     x = torch.randn(2, 6, 64, 17)
     y = m(x)
     print(f"Input:  {tuple(x.shape)}")

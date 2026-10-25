@@ -1,0 +1,35 @@
+{
+  "modality": "rgb",
+  "split": "cross_view",
+  "train_rows": 8945,
+  "val_rows": 2237,
+  "clip_id_overlap": 0,
+  "train_cameras": [
+    "cam1",
+    "cam2",
+    "cam3"
+  ],
+  "val_cameras": [
+    "cam1",
+    "cam2",
+    "cam3"
+  ],
+  "camera_overlap": [
+    "cam1",
+    "cam2",
+    "cam3"
+  ],
+  "camera_overlap_policy": "allowed_for_group_holdout",
+  "audit_status": "PASS",
+  "excluded_imu_runs_without_explicit_split": 0,
+  "benchmark_mode": "train",
+  "dataset_load_strategy": "single_process_preload_once",
+  "max_samples_per_split": null,
+  "pretrained_weights": true,
+  "batch_size": 4,
+  "requested_architectures": [
+    "mc3_18"
+  ],
+  "seed": 42,
+  "failed_architectures": []
+}

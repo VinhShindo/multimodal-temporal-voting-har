@@ -1,14 +1,27 @@
 dataset: mmact
 modality: imu
 
+paths:
+  manifest_dir: data/processed/MMAct/manifests/multimodal_cross_view_3way
+  train_manifest: train_cross_view.csv
+  val_manifest: val_cross_view.csv
+  test_manifest: test_cross_view.csv
+  test_available: true
+  test_note: "Internal group-disjoint multimodal test split"
+
 sensor:
   sampling_rate: 50         # Hz sau resample
   channels: [ax, ay, az]    # acc_watch
 
 window:
-  size: 200                 # 4s @ 50Hz
+  size: 250                 # 5s @ 50Hz
   step: 50                  # 1s
+  eval_crops: 3             # Average start / center / end crops at validation
 
 normalize:
   method: zscore
   stats_from: train
+
+augmentation:
+  scale_range: [0.95, 1.05]
+  gaussian_noise_std: 0.015

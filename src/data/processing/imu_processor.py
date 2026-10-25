@@ -135,8 +135,19 @@ class IMUProcessor(BaseProcessor):
 
     def _build_raw_path(self, row: pd.Series) -> Path:
         """IMU sensor KHÔNG có cam."""
-        return Path(
+        path = Path(
             f"data/raw/trimmed_sensor/sensor/{self.sensor}/"
             f"{row['subject']}/{row['scene']}/{row['session']}/"
             f"{row['action']}.csv"
         )
+        if path.is_file():
+            return path
+
+        if path.parent.is_dir():
+            match = next((candidate for candidate in path.parent.iterdir()
+                          if candidate.is_file()
+                          and candidate.suffix.lower() == ".csv"
+                          and candidate.stem.casefold() == path.stem.casefold()), None)
+            if match is not None:
+                return match
+        return path

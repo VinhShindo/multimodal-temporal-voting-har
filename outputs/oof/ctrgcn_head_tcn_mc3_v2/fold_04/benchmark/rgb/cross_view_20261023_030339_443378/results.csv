@@ -1,0 +1,2 @@
+run,result_type,architecture,stream,feature_set,split,seed,accuracy,f1_macro,f1_weighted,num_samples,parameters_m,best_epoch,train_seconds,run_dir,architecture_status,architecture_note,paper_reference
+20261023_030345_bench_20261023_030339_443378_mc3_18,single,mc3_18,,raw,cross_view,46,0.8457066189624329,0.8614804152958696,0.8457859748208383,2236,11.51,19,4996.46,outputs/runs/rgb/20261023_030345_bench_20261023_030339_443378_mc3_18,official_backbone_adapted,Torchvision MC3-18 with project classifier head.,Medical/Video ResNet family

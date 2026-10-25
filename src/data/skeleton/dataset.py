@@ -17,6 +17,7 @@ import pandas as pd
 import yaml
 
 from src.data.skeleton.transforms import train_transform, val_transform
+from src.common.manifest_paths import resolve_train_val_manifests
 
 
 COCO_PARENT = [-1, 0, 0, 1, 2, 0, 0, 5, 6, 7, 8, 5, 6, 11, 12, 13, 14]
@@ -160,17 +161,19 @@ class SkeletonDataset(Dataset):
         return torch.from_numpy(feat).float(), int(self.labels[idx])
 
 
-def build_loaders(manifest_dir: str, cfg_path: str,
+def build_loaders(manifest_dir: str | None, cfg_path: str,
                   batch_size: int, num_workers: int = 4,
                   stream: str = "joint_bone_motion",
                   aug_level: str = "light",
                   cache: bool = True):
     from torch.utils.data import DataLoader, WeightedRandomSampler
 
-    train_ds = SkeletonDataset(f"{manifest_dir}/train_cross_view.csv",
+    train_manifest, val_manifest = resolve_train_val_manifests(
+        cfg_path, manifest_dir)
+    train_ds = SkeletonDataset(str(train_manifest),
                                cfg_path, augment=True, stream=stream,
                                aug_level=aug_level, cache=cache)
-    val_ds = SkeletonDataset(f"{manifest_dir}/val_cross_view.csv",
+    val_ds = SkeletonDataset(str(val_manifest),
                              cfg_path, augment=False, stream=stream, cache=cache)
 
     labels = train_ds.labels

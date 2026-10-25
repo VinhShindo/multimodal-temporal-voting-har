@@ -41,6 +41,7 @@ def main():
                     help="verify = chỉ check, extract = lưu frames NPY")
     ap.add_argument("--rgb-frames", type=int, default=16)
     ap.add_argument("--rgb-size", type=int, default=112)
+    ap.add_argument("--rgb-workers", type=int, default=16)
     ap.add_argument("--imu-hz", type=float, default=50.0)
     ap.add_argument("--imu-sensor", default="acc_watch_clip",
                     choices=["acc_watch_clip", "acc_phone_clip",
@@ -56,6 +57,7 @@ def main():
         "modality":      args.modality,
         "force":         args.force,
         "rgb_mode":      args.rgb_mode,
+        "rgb_workers":   args.rgb_workers,
         "imu_hz":        args.imu_hz,
         "imu_sensor":    args.imu_sensor,
     }
@@ -82,7 +84,8 @@ def main():
             imu_cfg={"target_hz": args.imu_hz, "sensor": args.imu_sensor},
             rgb_cfg={"mode": args.rgb_mode,
                      "n_frames": args.rgb_frames,
-                     "frame_size": args.rgb_size},
+                     "frame_size": args.rgb_size,
+                     "num_workers": args.rgb_workers},
             log_fn=run.info,
         )
         results = pipeline.run(

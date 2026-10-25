@@ -81,7 +81,7 @@ class ContinuousPredictor:
             # Checkpoint có thể là state_dict trực tiếp hoặc có wrapper
             state = ckpt.get("model_state", ckpt) if isinstance(ckpt, dict) else ckpt
 
-            m = CNNBiLSTM(in_channels=3, num_classes=32, dropout=0.3)
+            m = CNNBiLSTM(in_channels=3, num_classes=35, dropout=0.3)
             m = m.to(self.device)
             m.load_state_dict(state)
             m.eval()

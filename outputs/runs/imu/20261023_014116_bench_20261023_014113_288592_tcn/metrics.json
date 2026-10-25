@@ -1,0 +1,19 @@
+{
+  "val": {
+    "accuracy": 0.7489711934156379,
+    "f1_macro": 0.7402758023754955,
+    "f1_weighted": 0.7449057259629642,
+    "precision_macro": 0.7562405202858598,
+    "recall_macro": 0.7495952594591225,
+    "num_samples": 972
+  },
+  "train": {
+    "accuracy": 0.7855489843147339,
+    "f1_macro": 0.7813483816509571,
+    "f1_weighted": 0.7829574826800852,
+    "precision_macro": 0.7876128428942409,
+    "recall_macro": 0.7964026534013642,
+    "num_samples": 3889
+  },
+  "tta": false
+}

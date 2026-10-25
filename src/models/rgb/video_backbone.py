@@ -1,84 +1,57 @@
-"""
-Video backbone wrapper cho MMAct RGB.
+"""Video backbone wrapper for MMAct RGB.
 
-Hỗ trợ các model torchvision 0.21:
-  - r2plus1d_18 (default, 33M params)
-  - r3d_18      (33M)
-  - mc3_18      (11M — nhẹ)
-  - s3d         (8.9M)
-  - mvit_v2_s   (34M — cần VRAM lớn)
+This module preserves the legacy API while routing each architecture to its dedicated
+per-file implementation under src/models/rgb/.
 """
+
 import torch
 import torch.nn as nn
 
+from src.models.rgb.mc3_18 import MC3_18Classifier
+from src.models.rgb.mvit_v2_s import MViTV2SClassifier
+from src.models.rgb.r2plus1d_18 import R2Plus1D18Classifier
+from src.models.rgb.r3d_18 import R3D18Classifier
+from src.models.rgb.s3d import S3DClassifier
+from src.models.rgb.videomae import VideoMAEClassifier
+from src.models.rgb.videomae2 import VideoMAE2Classifier
 
-SUPPORTED_ARCHS = ["r2plus1d_18", "r3d_18", "mc3_18", "s3d", "mvit_v2_s"]
-
-
-def build_backbone(arch: str, num_classes: int,
-                   pretrained: bool = True, dropout: float = 0.3):
-    """Trả về model với classifier thay thế."""
-    from torchvision import models
-
-    if arch not in SUPPORTED_ARCHS:
-        raise ValueError(f"arch phải là 1 trong {SUPPORTED_ARCHS}")
-
-    if arch == "r2plus1d_18":
-        weights = models.video.R2Plus1D_18_Weights.KINETICS400_V1 if pretrained else None
-        model = models.video.r2plus1d_18(weights=weights)
-        in_feat = model.fc.in_features
-        model.fc = nn.Sequential(nn.Dropout(dropout),
-                                 nn.Linear(in_feat, num_classes))
-        input_layout = "BCTHW"   # (B, C, T, H, W)
-
-    elif arch == "r3d_18":
-        weights = models.video.R3D_18_Weights.KINETICS400_V1 if pretrained else None
-        model = models.video.r3d_18(weights=weights)
-        in_feat = model.fc.in_features
-        model.fc = nn.Sequential(nn.Dropout(dropout),
-                                 nn.Linear(in_feat, num_classes))
-        input_layout = "BCTHW"
-
-    elif arch == "mc3_18":
-        weights = models.video.MC3_18_Weights.KINETICS400_V1 if pretrained else None
-        model = models.video.mc3_18(weights=weights)
-        in_feat = model.fc.in_features
-        model.fc = nn.Sequential(nn.Dropout(dropout),
-                                 nn.Linear(in_feat, num_classes))
-        input_layout = "BCTHW"
-
-    elif arch == "s3d":
-        weights = models.video.S3D_Weights.KINETICS400_V1 if pretrained else None
-        model = models.video.s3d(weights=weights)
-        # S3D có `classifier` là Sequential với Linear cuối
-        in_feat = model.classifier[-1].in_features
-        model.classifier[-1] = nn.Linear(in_feat, num_classes)
-        input_layout = "BCTHW"
-
-    elif arch == "mvit_v2_s":
-        weights = models.video.MViT_V2_S_Weights.KINETICS400_V1 if pretrained else None
-        model = models.video.mvit_v2_s(weights=weights)
-        in_feat = model.head[-1].in_features
-        model.head[-1] = nn.Linear(in_feat, num_classes)
-        input_layout = "BCTHW"
-
-    return model, input_layout
+SUPPORTED_ARCHS = [
+    "r2plus1d_18", "r3d_18", "mc3_18", "s3d", "mvit_v2_s",
+    "videomae", "videomae2",
+]
+ARCH_BUILDERS = {
+    "r2plus1d_18": R2Plus1D18Classifier,
+    "r3d_18": R3D18Classifier,
+    "mc3_18": MC3_18Classifier,
+    "s3d": S3DClassifier,
+    "mvit_v2_s": MViTV2SClassifier,
+    "videomae": VideoMAEClassifier,
+    "videomae2": VideoMAE2Classifier,
+}
 
 
 class VideoClassifier(nn.Module):
-    """Wrapper chuẩn hóa input (B, T, C, H, W) → (B, C, T, H, W)."""
+    """Compatibility wrapper that accepts input (B, T, C, H, W) and permutes it."""
 
     def __init__(self, arch: str, num_classes: int,
                  pretrained: bool = True, dropout: float = 0.3):
         super().__init__()
+        if arch not in ARCH_BUILDERS:
+            raise ValueError(f"arch must be one of {SUPPORTED_ARCHS}")
         self.arch = arch
-        self.model, self.input_layout = build_backbone(
-            arch, num_classes, pretrained, dropout)
+        self.model = ARCH_BUILDERS[arch](num_classes=num_classes,
+                                        pretrained=pretrained,
+                                        dropout=dropout)
 
     def forward(self, x):
-        # x: (B, T, C, H, W) từ dataset
-        x = x.permute(0, 2, 1, 3, 4).contiguous()  # → (B, C, T, H, W)
         return self.model(x)
+
+
+def build_backbone(arch: str, num_classes: int,
+                   pretrained: bool = True, dropout: float = 0.3):
+    return ARCH_BUILDERS[arch](num_classes=num_classes,
+                              pretrained=pretrained,
+                              dropout=dropout), "BCTHW"
 
 
 def build_video_model(arch: str = "r2plus1d_18",
@@ -92,7 +65,7 @@ if __name__ == "__main__":
     for arch in SUPPORTED_ARCHS:
         try:
             m = build_video_model(arch, 32, pretrained=False)
-            x = torch.randn(1, 16, 3, 224, 224)   # (B, T, C, H, W)
+            x = torch.randn(1, 16, 3, 224, 224)
             y = m(x)
             n = sum(p.numel() for p in m.parameters()) / 1e6
             print(f"  {arch:15s}  params={n:6.2f}M  out={tuple(y.shape)}")

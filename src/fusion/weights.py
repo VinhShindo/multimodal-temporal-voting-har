@@ -1,6 +1,7 @@
 """
 Grid search weight cho weighted probability voting.
-Tìm weight tối ưu trên val set (theo F1 macro).
+Caller quyết định fit split; benchmark không được truyền eval labels vào đây
+để tìm trọng số nếu muốn đánh giá leakage-safe.
 """
 import numpy as np
 from sklearn.metrics import f1_score
@@ -13,6 +14,8 @@ def grid_search_weights(probs_dict: dict, labels: np.ndarray,
                         log_fn=None) -> dict:
     """
     Return {"weights": {...}, "score": float, "all_results": [...]}.
+    ``score`` là score trên chính dữ liệu được truyền vào và chỉ dùng để
+    chọn weights trong fit split.
     """
     def log(m):
         if log_fn:

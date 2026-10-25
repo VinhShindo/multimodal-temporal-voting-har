@@ -1,0 +1,26 @@
+dataset: mmact
+modality: rgb
+model:
+  name: video_classifier
+  arch: mc3_18
+  num_classes: 35
+  dropout: 0.3
+  pretrained: true
+train:
+  epochs: 50
+  batch_size: 4
+  num_workers: 4
+  cache_in_memory: false
+  cache_max_clips: 4
+  prefetch_factor: 1
+  persistent_workers: true
+  amp: true
+  optimizer: adamw
+  lr: 5.0e-05
+  weight_decay: 0.05
+  label_smoothing: 0.1
+  scheduler: cosine_warmup
+  warmup_epochs: 1
+  early_stop_patience: 8
+output_dir: outputs/checkpoints/rgb_mmact
+seed: 46

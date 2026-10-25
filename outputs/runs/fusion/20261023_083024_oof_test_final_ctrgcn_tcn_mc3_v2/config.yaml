@@ -1,0 +1,48 @@
+benchmark:
+  architecture_audit: configs/fusion/architecture_audit.yaml
+  split: cross_view
+  seed: 42
+  architectures:
+    skeleton:
+    - ctrgcn_head
+    imu:
+    - tcn
+    rgb:
+    - mc3_18
+fusion:
+  num_classes: 35
+  candidates:
+  - skeleton
+  - imu
+  - rgb
+  architectures:
+    skeleton:
+    - ctrgcn_head
+    imu:
+    - tcn
+    rgb:
+    - mc3_18
+  weight_step: 0.1
+  select_metric: f1_macro
+  min_val_samples: 500
+paths:
+  manifest_dir: data/processed/MMAct/manifests/multimodal_cross_view_3way
+  train_manifest: train_cross_view.csv
+  val_manifest: val_cross_view.csv
+  test_manifest: test_cross_view.csv
+evaluation:
+  fit_split: train_cross_view
+  fit_source: oof
+  eval_split: test_cross_view
+attention:
+  epochs: 80
+  batch_size: 512
+  hidden_dim: 32
+  num_heads: 2
+  dropout: 0.3
+  lr: 0.001
+  weight_decay: 0.001
+  patience: 10
+  seed: 42
+output:
+  root: outputs/runs

@@ -221,7 +221,7 @@ def _t_out(T: int, n_stride2: int = 2) -> int:
 # Baseline (GIỮ NGUYÊN cấu trúc tên tham số của run cũ)
 # ============================================================
 class CTRGCN(nn.Module):
-    def __init__(self, num_classes: int = 32, num_joints: int = 17,
+    def __init__(self, num_classes: int = 35, num_joints: int = 17,
                  in_channels: int = 6, base_channels: int = 64,
                  dropout: float = 0.3):
         super().__init__()
@@ -454,8 +454,9 @@ class DualBranchCTRGCN(nn.Module):
 # ============================================================
 # Factory
 # ============================================================
-def build_model(arch: str = "dual", num_classes: int = 32, num_joints: int = 17,
+def build_model(arch: str = "dual", num_classes: int = 35, num_joints: int = 17,
                 in_channels: int = None, target_len: int = 64, **kw):
+    arch = str(arch).lower()
     if arch == "ctrgcn":
         return CTRGCN(num_classes, num_joints, in_channels or 6,
                       dropout=kw.get("dropout", 0.3))
@@ -471,7 +472,7 @@ def build_model(arch: str = "dual", num_classes: int = 32, num_joints: int = 17,
     raise ValueError(f"Unknown arch: {arch}")
 
 
-def build_ctrgcn(num_classes: int = 32, num_joints: int = 17,
+def build_ctrgcn(num_classes: int = 35, num_joints: int = 17,
                  in_channels: int = 6) -> CTRGCN:
     """Giữ lại cho code cũ (fusion/eval) — baseline."""
     return CTRGCN(num_classes=num_classes, num_joints=num_joints,

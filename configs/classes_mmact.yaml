@@ -1,6 +1,9 @@
-# configs/classes.yaml
-# MMAct Challenge 2021 — 32 classes (union quan sát từ subject1)
+# configs/classes_mmact.yaml
+# MMAct dataset mở rộng — 35 classes
+# 32 classes gốc từ Challenge 2021 + 3 classes mới từ dataset hdd2
+
 classes:
+  # ─── 32 classes gốc ───
   0:  carrying
   1:  checking_time
   2:  closing
@@ -34,4 +37,9 @@ classes:
   30: walking
   31: waving_hand
 
-num_classes: 32
+  # ─── 3 classes mở rộng từ hdd2 ───
+  32: carrying_heavy
+  33: carrying_light
+  34: setting_down
+
+num_classes: 35

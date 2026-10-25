@@ -37,7 +37,17 @@ def resolve_train_rgb(row, root: Path):
         subj=subj, cam=cam, scene=scene, session=session, action=action
     )
     p = root / rel_path
-    return str(p) if p.exists() else ""
+    if p.is_file():
+        return str(p)
+
+    if p.parent.is_dir():
+        match = next((candidate for candidate in p.parent.iterdir()
+                      if candidate.is_file()
+                      and candidate.suffix.lower() == p.suffix.lower()
+                      and candidate.stem.casefold() == p.stem.casefold()), None)
+        if match is not None:
+            return str(match)
+    return ""
 
 
 def process_manifest(csv_path: Path, root: Path, verify_only: bool = False):
@@ -49,9 +59,9 @@ def process_manifest(csv_path: Path, root: Path, verify_only: bool = False):
     print(f"  Total rows: {len(df)}")
 
     if "rgb_path" in df.columns and verify_only:
-        # Chỉ verify
-        n_ok = (df["rgb_path"].notna() & (df["rgb_path"] != "")).sum()
-        print(f"  rgb_path có sẵn: {n_ok}/{len(df)}")
+        paths = df["rgb_path"].fillna("").astype(str)
+        exists = paths.map(lambda value: Path(value).is_file() if value else False)
+        print(f"  RGB file tồn tại: {exists.sum()}/{len(df)}")
         return
 
     # Resolve từng row
@@ -130,7 +140,8 @@ def main():
         if "rgb_path" not in df.columns:
             print(f"  {csv_name}: chưa có cột rgb_path")
             continue
-        n_ok = (df["rgb_path"].notna() & (df["rgb_path"] != "")).sum()
+        paths = df["rgb_path"].fillna("").astype(str)
+        n_ok = paths.map(lambda value: Path(value).is_file() if value else False).sum()
         print(f"  {csv_name}: {n_ok}/{len(df)} clip có RGB")
 
     print()

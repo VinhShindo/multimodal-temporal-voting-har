@@ -1,0 +1,176 @@
+{
+  "manifest_dir": "data/processed/MMAct/manifests/multimodal_cross_view_3way",
+  "train_manifest": "data/processed/MMAct/manifests/multimodal_cross_view_3way/train_cross_view.csv",
+  "folds": 5,
+  "seed": 42,
+  "architectures": {
+    "skeleton": "ctrgcn_head",
+    "imu": "tcn",
+    "rgb": "mc3_18"
+  },
+  "fold_records": [
+    {
+      "fold": 0,
+      "train_rows": 8945,
+      "val_rows": 2237,
+      "run_dirs": {
+        "skeleton": "outputs/runs/skeleton/20261022_193214_bench_20261022_193207_863712_ctrgcn_head",
+        "imu": "outputs/runs/imu/20261022_194812_bench_20261022_194809_234860_tcn",
+        "rgb": "outputs/runs/rgb/20261022_194909_bench_20261022_194901_516566_mc3_18"
+      }
+    },
+    {
+      "fold": 1,
+      "train_rows": 8945,
+      "val_rows": 2237,
+      "run_dirs": {
+        "skeleton": "outputs/runs/skeleton/20261022_213029_bench_20261022_213021_335571_ctrgcn_head",
+        "imu": "outputs/runs/imu/20261022_214814_bench_20261022_214810_619709_tcn",
+        "rgb": "outputs/runs/rgb/20261022_214949_bench_20261022_214943_004202_mc3_18"
+      }
+    },
+    {
+      "fold": 2,
+      "train_rows": 8946,
+      "val_rows": 2236,
+      "run_dirs": {
+        "skeleton": "outputs/runs/skeleton/20261022_230822_bench_20261022_230818_720817_ctrgcn_head",
+        "imu": "outputs/runs/imu/20261022_232743_bench_20261022_232740_051753_tcn",
+        "rgb": "outputs/runs/rgb/20261022_232854_bench_20261022_232848_496479_mc3_18"
+      }
+    },
+    {
+      "fold": 3,
+      "train_rows": 8946,
+      "val_rows": 2236,
+      "run_dirs": {
+        "skeleton": "outputs/runs/skeleton/20261023_012238_bench_20261023_012232_661648_ctrgcn_head",
+        "imu": "outputs/runs/imu/20261023_014116_bench_20261023_014113_288592_tcn",
+        "rgb": "outputs/runs/rgb/20261023_014214_bench_20261023_014208_417374_mc3_18"
+      }
+    },
+    {
+      "fold": 4,
+      "train_rows": 8946,
+      "val_rows": 2236,
+      "run_dirs": {
+        "skeleton": "outputs/runs/skeleton/20261023_024429_bench_20261023_024424_846490_ctrgcn_head",
+        "imu": "outputs/runs/imu/20261023_030215_bench_20261023_030211_927771_tcn",
+        "rgb": "outputs/runs/rgb/20261023_030345_bench_20261023_030339_443378_mc3_18"
+      }
+    }
+  ],
+  "modalities": {
+    "skeleton": {
+      "run_dir": "outputs/runs/skeleton/20261022_121825_bench_20261022_113258_927348_ctrgcn_head",
+      "samples": 11182,
+      "classes": 35,
+      "folds": [
+        {
+          "fold": 0,
+          "samples": 2237
+        },
+        {
+          "fold": 1,
+          "samples": 2237
+        },
+        {
+          "fold": 2,
+          "samples": 2236
+        },
+        {
+          "fold": 3,
+          "samples": 2236
+        },
+        {
+          "fold": 4,
+          "samples": 2236
+        }
+      ],
+      "files": [
+        "outputs/runs/skeleton/20261022_121825_bench_20261022_113258_927348_ctrgcn_head/oof_train_probs.npy",
+        "outputs/runs/skeleton/20261022_121825_bench_20261022_113258_927348_ctrgcn_head/oof_train_labels.npy",
+        "outputs/runs/skeleton/20261022_121825_bench_20261022_113258_927348_ctrgcn_head/oof_train_clip_ids.npy"
+      ],
+      "aggregated_files": [
+        "outputs/oof/ctrgcn_head_tcn_mc3_v2/aggregated/skeleton/oof_train_probs.npy",
+        "outputs/oof/ctrgcn_head_tcn_mc3_v2/aggregated/skeleton/oof_train_labels.npy",
+        "outputs/oof/ctrgcn_head_tcn_mc3_v2/aggregated/skeleton/oof_train_clip_ids.npy"
+      ]
+    },
+    "imu": {
+      "run_dir": "outputs/runs/imu/20261022_131738_bench_20261022_131348_512401_tcn",
+      "samples": 4861,
+      "classes": 35,
+      "folds": [
+        {
+          "fold": 0,
+          "samples": 972
+        },
+        {
+          "fold": 1,
+          "samples": 973
+        },
+        {
+          "fold": 2,
+          "samples": 972
+        },
+        {
+          "fold": 3,
+          "samples": 972
+        },
+        {
+          "fold": 4,
+          "samples": 972
+        }
+      ],
+      "files": [
+        "outputs/runs/imu/20261022_131738_bench_20261022_131348_512401_tcn/oof_train_probs.npy",
+        "outputs/runs/imu/20261022_131738_bench_20261022_131348_512401_tcn/oof_train_labels.npy",
+        "outputs/runs/imu/20261022_131738_bench_20261022_131348_512401_tcn/oof_train_clip_ids.npy"
+      ],
+      "aggregated_files": [
+        "outputs/oof/ctrgcn_head_tcn_mc3_v2/aggregated/imu/oof_train_probs.npy",
+        "outputs/oof/ctrgcn_head_tcn_mc3_v2/aggregated/imu/oof_train_labels.npy",
+        "outputs/oof/ctrgcn_head_tcn_mc3_v2/aggregated/imu/oof_train_clip_ids.npy"
+      ]
+    },
+    "rgb": {
+      "run_dir": "outputs/runs/rgb/20261022_171009_bench_20261022_171003_394805_mc3_18",
+      "samples": 11182,
+      "classes": 35,
+      "folds": [
+        {
+          "fold": 0,
+          "samples": 2237
+        },
+        {
+          "fold": 1,
+          "samples": 2237
+        },
+        {
+          "fold": 2,
+          "samples": 2236
+        },
+        {
+          "fold": 3,
+          "samples": 2236
+        },
+        {
+          "fold": 4,
+          "samples": 2236
+        }
+      ],
+      "files": [
+        "outputs/runs/rgb/20261022_171009_bench_20261022_171003_394805_mc3_18/oof_train_probs.npy",
+        "outputs/runs/rgb/20261022_171009_bench_20261022_171003_394805_mc3_18/oof_train_labels.npy",
+        "outputs/runs/rgb/20261022_171009_bench_20261022_171003_394805_mc3_18/oof_train_clip_ids.npy"
+      ],
+      "aggregated_files": [
+        "outputs/oof/ctrgcn_head_tcn_mc3_v2/aggregated/rgb/oof_train_probs.npy",
+        "outputs/oof/ctrgcn_head_tcn_mc3_v2/aggregated/rgb/oof_train_labels.npy",
+        "outputs/oof/ctrgcn_head_tcn_mc3_v2/aggregated/rgb/oof_train_clip_ids.npy"
+      ]
+    }
+  }
+}

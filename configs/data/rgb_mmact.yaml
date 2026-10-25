@@ -1,6 +1,14 @@
 dataset: mmact
 modality: rgb
 
+paths:
+  manifest_dir: data/processed/MMAct/manifests/multimodal_cross_view_3way
+  train_manifest: train_cross_view.csv
+  val_manifest: val_cross_view.csv
+  test_manifest: test_cross_view.csv
+  test_available: true
+  test_note: "Internal group-disjoint multimodal test split"
+
 sampling:
   num_frames: 8               # 16 → 8 (verify nhanh)
   stride: 1

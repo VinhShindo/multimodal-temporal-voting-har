@@ -1,0 +1,21 @@
+dataset: mmact
+modality: imu
+split: cross_view
+seed: 42
+model:
+  arch: tcn
+  name: imu_tcn
+  in_channels: 10
+  num_classes: 35
+feature_set: gravity_jerk
+train:
+  epochs: 100
+  batch_size: 256
+  num_workers: 16
+  amp: true
+  optimizer: adam
+  lr: 0.001
+  weight_decay: 0.0001
+  scheduler: cosine
+  early_stop_patience: 10
+output_dir: outputs/checkpoints/imu_mmact

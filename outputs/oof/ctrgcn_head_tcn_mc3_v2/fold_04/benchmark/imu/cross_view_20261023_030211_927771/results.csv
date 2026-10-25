@@ -1,0 +1,2 @@
+run,result_type,architecture,stream,feature_set,split,seed,accuracy,f1_macro,f1_weighted,num_samples,parameters_m,best_epoch,train_seconds,run_dir,architecture_status,architecture_note,paper_reference
+20261023_030215_bench_20261023_030211_927771_tcn,single,tcn,,gravity_jerk,cross_view,46,0.7962962962962963,0.7950114174881443,0.7959192137424579,972,0.21,69,70.75,outputs/runs/imu/20261023_030215_bench_20261023_030211_927771_tcn,paper_family_adapted,Residual dilated TCN variant; exact channel/depth schedule is project-specific.,Bai et al. 2018

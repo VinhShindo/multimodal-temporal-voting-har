@@ -1,0 +1,27 @@
+{
+  "val": {
+    "accuracy": 0.9042125033539039,
+    "f1_macro": 0.9030657629291758,
+    "f1_weighted": 0.9049180230282635,
+    "precision_macro": 0.9059541170198427,
+    "recall_macro": 0.9054949119570334,
+    "num_samples": 3727
+  },
+  "train": {
+    "accuracy": 0.9878375961366482,
+    "f1_macro": 0.9863913641851543,
+    "f1_weighted": 0.9880703455864369,
+    "num_samples": 11182,
+    "source": "predict-only (from best.pt)",
+    "manifest": "data/processed/MMAct/manifests/multimodal_cross_view_3way/train_cross_view.csv"
+  },
+  "tta": false,
+  "test": {
+    "accuracy": 0.9162865575529917,
+    "f1_macro": 0.9123651712111474,
+    "f1_weighted": 0.9172981665769411,
+    "num_samples": 3727,
+    "source": "predict-only (from best.pt)",
+    "manifest": "data/processed/MMAct/manifests/multimodal_cross_view_3way/test_cross_view.csv"
+  }
+}

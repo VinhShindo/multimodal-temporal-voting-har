@@ -1,14 +1,21 @@
 dataset: mmact
 modality: imu
+split: cross_view
+seed: 42
 
 model:
-  name: cnn_bilstm
-  in_channels: 3            # ax, ay, az
-  num_classes: 32
+  arch: tcn
+  name: imu_tcn
+  in_channels: 10           # raw XYZ + magnitude + dynamic XYZ + jerk XYZ
+  num_classes: 35
+
+feature_set: gravity_jerk
 
 train:
-  epochs: 60
-  batch_size: 128
+  epochs: 100
+  batch_size: 256
+  num_workers: 16
+  amp: true
   optimizer: adam
   lr: 0.001
   weight_decay: 0.0001

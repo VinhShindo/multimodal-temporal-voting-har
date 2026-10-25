@@ -1,0 +1,41 @@
+                     precision    recall  f1-score   support
+
+           carrying     0.8254    0.4000    0.5389       130
+      checking_time     0.9593    0.9147    0.9365       129
+            closing     0.8917    0.8295    0.8594       129
+          crouching     0.7544    0.3333    0.4624       129
+           drinking     0.6462    0.9130    0.7568        46
+           entering     0.8584    0.7578    0.8050       128
+            exiting     0.8268    0.8333    0.8300       126
+               fall     0.7958    0.8898    0.8401       127
+            jumping     0.8559    0.7769    0.8145       130
+            kicking     0.5210    0.6744    0.5878       129
+          loitering     0.5680    0.7385    0.6421       130
+     looking_around     0.4251    0.6769    0.5223       130
+            opening     0.8947    0.7969    0.8430       128
+         picking_up     0.9091    0.7087    0.7965       127
+          pocket_in     0.9130    0.9333    0.9231        45
+         pocket_out     0.8113    0.9348    0.8687        46
+           pointing     0.8769    0.8837    0.8803       129
+            pulling     0.7333    0.5969    0.6581       129
+            pushing     0.7083    0.7907    0.7473       129
+            running     0.9590    0.9070    0.9323       129
+            sitting     0.7500    1.0000    0.8571        45
+       sitting_down     0.5429    0.8444    0.6609        45
+           standing     0.6518    0.5840    0.6160       125
+        standing_up     0.4271    0.8913    0.5775        46
+            talking     0.7460    0.3701    0.4947       127
+   talking_on_phone     0.9337    0.8960    0.9145       173
+           throwing     0.9725    0.8217    0.8908       129
+transferring_object     0.7603    0.8740    0.8132       127
+           using_pc     0.7188    1.0000    0.8364        46
+        using_phone     0.8953    0.8851    0.8902       174
+            walking     0.7553    0.5462    0.6339       130
+        waving_hand     0.9677    0.9375    0.9524       128
+     carrying_heavy     0.5135    0.5507    0.5315        69
+     carrying_light     0.3620    0.8310    0.5043        71
+       setting_down     0.8152    0.5814    0.6787       129
+
+           accuracy                         0.7496      3889
+          macro avg     0.7585    0.7687    0.7456      3889
+       weighted avg     0.7822    0.7496    0.7503      3889

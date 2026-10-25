@@ -1,45 +1,48 @@
 {
-  "n_clips": 16488,
+  "n_clips": 11182,
   "class_distribution": {
-    "total": 16488,
-    "num_classes": 32,
-    "min_per_class": 200,
-    "max_per_class": 788,
-    "mean_per_class": 515.25,
-    "std_per_class": 176.38648913220962,
+    "total": 11182,
+    "num_classes": 35,
+    "min_per_class": 135,
+    "max_per_class": 512,
+    "mean_per_class": 319.48571428571427,
+    "std_per_class": 109.48257219048782,
     "counts": {
-      "carrying": 588,
-      "checking_time": 588,
-      "closing": 588,
-      "crouching": 588,
-      "drinking": 200,
-      "entering": 588,
-      "exiting": 586,
-      "fall": 588,
-      "jumping": 588,
-      "kicking": 588,
-      "loitering": 588,
-      "looking_around": 588,
-      "opening": 588,
-      "picking_up": 586,
-      "pocket_in": 200,
-      "pocket_out": 200,
-      "pointing": 588,
-      "pulling": 588,
-      "pushing": 588,
-      "running": 588,
-      "sitting": 200,
-      "sitting_down": 200,
-      "standing": 586,
-      "standing_up": 200,
-      "talking": 586,
-      "talking_on_phone": 788,
-      "throwing": 588,
-      "transferring_object": 584,
-      "using_pc": 200,
-      "using_phone": 788,
-      "walking": 588,
-      "waving_hand": 588
+      "carrying": 384,
+      "checking_time": 379,
+      "closing": 374,
+      "crouching": 378,
+      "drinking": 135,
+      "entering": 296,
+      "exiting": 259,
+      "fall": 379,
+      "jumping": 381,
+      "kicking": 377,
+      "loitering": 382,
+      "looking_around": 376,
+      "opening": 375,
+      "picking_up": 375,
+      "pocket_in": 136,
+      "pocket_out": 136,
+      "pointing": 373,
+      "pulling": 380,
+      "pushing": 381,
+      "running": 382,
+      "sitting": 136,
+      "sitting_down": 136,
+      "standing": 369,
+      "standing_up": 136,
+      "talking": 331,
+      "talking_on_phone": 512,
+      "throwing": 378,
+      "transferring_object": 338,
+      "using_pc": 135,
+      "using_phone": 510,
+      "walking": 383,
+      "waving_hand": 378,
+      "carrying_heavy": 210,
+      "carrying_light": 211,
+      "setting_down": 381
     }
   },
   "video_metadata": {
@@ -47,15 +50,15 @@
     "n_valid": 200,
     "n_missing": 0,
     "duration": {
-      "min": 2.335669002335669,
-      "max": 23.023023023023026,
-      "mean": 7.26723248269946,
-      "median": 6.656656656656657
+      "min": 2.53671562082777,
+      "max": 23.123123123123126,
+      "mean": 7.630922589255923,
+      "median": 6.723390056723391
     },
     "fps": {
-      "min": 29.95,
+      "min": 29.96,
       "max": 29.97,
-      "mean": 29.968200000000007
+      "mean": 29.968750000000004
     },
     "resolution": {
       "widths": [
@@ -66,9 +69,9 @@
       ]
     },
     "frames": {
-      "min": 70,
-      "max": 690,
-      "mean": 217.785
+      "min": 76,
+      "max": 693,
+      "mean": 228.69
     }
   },
   "quality": {

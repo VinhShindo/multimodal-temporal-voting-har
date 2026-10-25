@@ -26,17 +26,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.utils.data import DataLoader
 from sklearn.metrics import f1_score, accuracy_score
 import yaml
 from tqdm import tqdm
 
 from src.common.run_logger import RunLogger, Timer, load_class_names
 from src.data.skeleton.dataset import build_loaders, IN_CHANNELS
-from src.models.skeleton.ctrgcn import build_model
+from src.models.skeleton import BarlowTwinsSkeleton, build_model
 from src.evaluation.isolated_eval import full_evaluation
 
 
-DEFAULT_STREAM = {"ctrgcn": "joint_bone_motion", "ctrgcn_head": "rich", "dual": "dual"}
+DEFAULT_STREAM = {
+    "stgcn": "joint_bone_motion", "ms_g3d": "joint_bone_motion",
+    "ctrgcn": "joint_bone_motion", "sta_gcn": "joint_bone_motion",
+    "barlow_twins": "joint_bone_motion", "ctrgcn_head": "rich", "dual": "dual",
+}
 
 
 # ============================================================
@@ -104,17 +109,25 @@ def build_optimizer(model, tcfg: dict):
 # Train / eval
 # ============================================================
 def train_one_epoch(model, loader, optimizer, criterion, device,
-                    grad_clip=3.0, ema=None, scaler=None, amp=False):
+                    grad_clip=3.0, ema=None, scaler=None, amp=False,
+                    show_progress=True):
     model.train()
     dev_type = "cuda" if str(device).startswith("cuda") else "cpu"
     losses, preds_all, labels_all = [], [], []
-    for x, y in tqdm(loader, desc="train", leave=False):
+    for x, y in tqdm(loader, desc="train", leave=False,
+                      disable=not show_progress):
         x = x.to(device, non_blocking=True)
         y = y.to(device, non_blocking=True)
         optimizer.zero_grad(set_to_none=True)
         with torch.autocast(device_type=dev_type, dtype=torch.float16, enabled=amp):
-            logits = model(x)
-        loss = criterion(logits.float(), y)
+            if isinstance(model, BarlowTwinsSkeleton):
+                logits, projection1 = model(x, return_projection=True)
+                _, projection2 = model(model.augment(x), return_projection=True)
+                loss = criterion(logits.float(), y) + 0.01 * model.loss(
+                    projection1, projection2)
+            else:
+                logits = model(x)
+                loss = criterion(logits.float(), y)
 
         if scaler is not None and scaler.is_enabled():
             scaler.scale(loss).backward()
@@ -142,10 +155,11 @@ def train_one_epoch(model, loader, optimizer, criterion, device,
 
 
 @torch.no_grad()
-def evaluate(model, loader, criterion, device):
+def evaluate(model, loader, criterion, device, show_progress=True):
     model.eval()
     losses, preds_all, labels_all = [], [], []
-    for x, y in tqdm(loader, desc="val", leave=False):
+    for x, y in tqdm(loader, desc="val", leave=False,
+                      disable=not show_progress):
         x = x.to(device, non_blocking=True)
         y = y.to(device, non_blocking=True)
         logits = model(x)
@@ -171,10 +185,13 @@ def main():
     ap.add_argument("--config", default="configs/train/skeleton_mmact.yaml")
     ap.add_argument("--data-cfg", default="configs/data/skeleton_mmact.yaml")
     ap.add_argument("--classes-cfg", default="configs/classes_mmact.yaml")
-    ap.add_argument("--manifest-dir", default="data/processed/MMAct/manifests")
+    ap.add_argument("--manifest-dir", default=None,
+                    help="Override paths.manifest_dir from the data config")
     ap.add_argument("--device",
                     default="cuda" if torch.cuda.is_available() else "cpu")
-    ap.add_argument("--arch", default=None, choices=["ctrgcn", "ctrgcn_head", "dual"])
+    ap.add_argument("--arch", default=None, choices=[
+        "stgcn", "ms_g3d", "ctrgcn", "sta_gcn", "barlow_twins",
+        "ctrgcn_head", "dual"])
     ap.add_argument("--stream", default=None, choices=list(IN_CHANNELS.keys()))
     ap.add_argument("--aug", default=None, choices=["none", "light", "strong", "view"])
     ap.add_argument("--optim", default=None, choices=["adamw", "sgd"])
@@ -185,11 +202,14 @@ def main():
     ap.add_argument("--grad-clip", type=float, default=None)
     ap.add_argument("--ema", type=float, default=None, help="EMA decay (0 = tắt)")
     ap.add_argument("--batch-size", type=int, default=None)
-    ap.add_argument("--num-workers", type=int, default=4)
+    ap.add_argument("--num-workers", type=int, default=None)
     ap.add_argument("--seed", type=int, default=42)
-    ap.add_argument("--amp", action="store_true", help="mixed precision fp16 (nhanh hơn trên GPU)")
+    ap.add_argument("--amp", action=argparse.BooleanOptionalAction, default=None,
+                    help="mixed precision fp16")
     ap.add_argument("--no-cache", action="store_true", help="không cache NPY vào RAM")
     ap.add_argument("--tag", default=None)
+    ap.add_argument("--quiet-progress", action="store_true",
+                    help="suppress per-batch tqdm output")
     args = ap.parse_args()
 
     set_seed(args.seed)
@@ -213,6 +233,8 @@ def main():
 
     arch = args.arch or mcfg.get("arch", "dual")
     stream = args.stream or DEFAULT_STREAM[arch]
+    mcfg["arch"] = arch
+    mcfg["stream"] = stream
     if arch == "dual" and stream != "dual":
         raise SystemExit("--arch dual yêu cầu --stream dual")
     if arch != "dual" and stream == "dual":
@@ -223,7 +245,12 @@ def main():
     aug_level = tcfg.get("aug_level", "light")
     grad_clip = tcfg.get("grad_clip", 3.0)
     ema_decay = tcfg.get("ema_decay", 0.999)
-    amp = bool(args.amp) and str(args.device).startswith("cuda")
+    num_workers = (args.num_workers if args.num_workers is not None
+                   else tcfg.get("num_workers", 4))
+    amp = (tcfg.get("amp", False) if args.amp is None else args.amp)
+    amp = bool(amp) and str(args.device).startswith("cuda")
+    if amp:
+        torch.backends.cudnn.benchmark = True
 
     tag = args.tag or f"{arch}_{stream}"
     run = RunLogger("skeleton", config=cfg, tag=tag)
@@ -243,7 +270,7 @@ def main():
     run.info("[Data] Loading...")
     train_loader, val_loader = build_loaders(
         args.manifest_dir, args.data_cfg, tcfg["batch_size"],
-        num_workers=args.num_workers, stream=stream, aug_level=aug_level,
+        num_workers=num_workers, stream=stream, aug_level=aug_level,
         cache=not args.no_cache)
     run.info(f"[Data] train={len(train_loader.dataset)} val={len(val_loader.dataset)}")
 
@@ -297,9 +324,11 @@ def main():
         with Timer() as t:
             tr_loss, tr_acc, tr_f1 = train_one_epoch(
                 model, train_loader, optimizer, criterion, args.device,
-                grad_clip=grad_clip, ema=ema, scaler=scaler, amp=amp)
+                grad_clip=grad_clip, ema=ema, scaler=scaler, amp=amp,
+                show_progress=not args.quiet_progress)
             va_loss, va_acc, va_f1 = evaluate(
-                eval_model, val_loader, criterion, args.device)
+                eval_model, val_loader, criterion, args.device,
+                show_progress=not args.quiet_progress)
             scheduler.step()
 
         lr_now = optimizer.param_groups[0]["lr"]
@@ -348,11 +377,23 @@ def main():
     run.info(f"  Loaded best from epoch {best_ckpt['epoch']} "
              f"(f1={best_ckpt['best_f1']:.4f})")
 
+    # The training loader uses a weighted sampler, augmentation and drop_last.
+    # Reuse its dataset in deterministic manifest order for aligned
+    # train_probs, which is required by learned attention fusion.
+    train_eval_dataset = train_loader.dataset
+    train_eval_dataset.augment = False
+    train_eval_loader = DataLoader(
+        train_eval_dataset, batch_size=train_loader.batch_size,
+        shuffle=False, num_workers=num_workers, pin_memory=True,
+        drop_last=False, persistent_workers=num_workers > 0)
+    train_clip_ids = train_eval_dataset.df["clip_id"].astype(str).tolist()
+
     class_names = load_class_names(args.classes_cfg)
     val_metrics = full_evaluation(
-        model, train_loader, val_loader, class_names,
+        model, train_eval_loader, val_loader, class_names,
         out_dir=run.path, device=args.device,
-        collect_train=True, log_fn=run.info)
+        collect_train=True, train_clip_ids=train_clip_ids,
+        log_fn=run.info)
 
     run.info("")
     run.info("=" * 70)

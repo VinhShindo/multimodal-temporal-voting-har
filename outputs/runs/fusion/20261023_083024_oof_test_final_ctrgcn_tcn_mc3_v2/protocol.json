@@ -1,0 +1,24 @@
+{
+  "fit_split": "train_cross_view",
+  "fit_source": "oof",
+  "eval_split": "test_cross_view",
+  "fit_intersection_clips": 4861,
+  "eval_intersection_clips": 1619,
+  "modalities": [
+    "skeleton",
+    "imu",
+    "rgb"
+  ],
+  "architectures": {
+    "skeleton": "ctrgcn_head",
+    "imu": "tcn",
+    "rgb": "mc3_18"
+  },
+  "run_dirs": {
+    "skeleton": "outputs/runs/skeleton/20261022_121825_bench_20261022_113258_927348_ctrgcn_head",
+    "imu": "outputs/runs/imu/20261022_131738_bench_20261022_131348_512401_tcn",
+    "rgb": "outputs/runs/rgb/20261022_171009_bench_20261022_171003_394805_mc3_18"
+  },
+  "selection_policy": "all methods reported; no best selected on eval",
+  "weighted_voting_policy": "weights fitted on fit split and frozen"
+}

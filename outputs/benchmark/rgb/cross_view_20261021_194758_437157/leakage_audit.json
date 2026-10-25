@@ -1,0 +1,21 @@
+{
+  "modality": "rgb",
+  "split": "cross_view",
+  "train_rows": 17674,
+  "val_rows": 3500,
+  "clip_id_overlap": 0,
+  "train_cameras": [
+    "cam1",
+    "cam2"
+  ],
+  "val_cameras": [
+    "cam3"
+  ],
+  "camera_overlap": [],
+  "audit_status": "PASS",
+  "excluded_imu_runs_without_explicit_split": 0,
+  "benchmark_mode": "reuse",
+  "requested_architectures": [],
+  "seed": null,
+  "failed_architectures": []
+}

@@ -1,0 +1,168 @@
+[08:30:24] ======================================================================
+[08:30:24]   FUSION BENCHMARK — 20261023_083024_oof_test_final_ctrgcn_tcn_mc3_v2
+[08:30:24] ======================================================================
+[08:30:24]   Runs root:     outputs/runs
+[08:30:24]   Weight step:   0.1
+[08:30:24]   Min samples:   500
+[08:30:24]   Fusion mode:   both
+[08:30:24]   Fit split:     train_cross_view (oof)
+[08:30:24]   Eval split:    test_cross_view
+[08:30:24]   Architecture filters: {'skeleton': ['ctrgcn_head'], 'imu': ['tcn'], 'rgb': ['mc3_18']}
+[08:30:24]   Run dir:       outputs/runs/fusion/20261023_083024_oof_test_final_ctrgcn_tcn_mc3_v2
+[08:30:24] 
+[08:30:24] ──────────────────────────────────────────────────────────────────────
+[08:30:24]   LOADING PREDICTIONS
+[08:30:24] ──────────────────────────────────────────────────────────────────────
+[08:30:24]   [ok]   skeleton: 3727 clips from 20261022_121825_bench_20261022_113258_927348_ctrgcn_head
+[08:30:24]   [ok]   imu: 1619 clips from 20261022_131738_bench_20261022_131348_512401_tcn
+[08:30:24]   [ok]   rgb: 3727 clips from 20261022_171009_bench_20261022_171003_394805_mc3_18
+[08:30:24] 
+[08:30:24]   Modalities dùng:  ['skeleton', 'imu', 'rgb']
+[08:30:24]   Architectures dùng: {'skeleton': 'ctrgcn_head', 'imu': 'tcn', 'rgb': 'mc3_18'}
+[08:30:24]   Num samples:      1619
+[08:30:24]   Num classes:      35
+[08:30:24]   [ok]   skeleton: 11182 clips from 20261022_121825_bench_20261022_113258_927348_ctrgcn_head
+[08:30:24]   [ok]   imu: 4861 clips from 20261022_131738_bench_20261022_131348_512401_tcn
+[08:30:24]   [ok]   rgb: 11182 clips from 20261022_171009_bench_20261022_171003_394805_mc3_18
+[08:30:25]   [fit] intersection: 4861 clips; modalities: ['skeleton', 'imu', 'rgb']
+[08:30:25]   [fit] OOF mode: using oof_train_probs/labels/clip_ids.npy
+[08:30:25] 
+[08:30:25] ──────────────────────────────────────────────────────────────────────
+[08:30:25]   EXPERIMENTS
+[08:30:25] ──────────────────────────────────────────────────────────────────────
+[08:30:25] 
+[08:30:25] [E1] Skeleton only  (['skeleton'])
+[08:30:25]   · voting/single     acc=0.9271  f1_macro=0.9247  f1_weighted=0.9283
+[08:30:25]   → Recorded voting: 1 methods (không chọn best trên eval split)
+[08:30:28]   · attention/single     acc=0.9271  f1_macro=0.9247  f1_weighted=0.9283
+[08:30:28]   → Recorded attention: 1 methods (không chọn best trên eval split)
+[08:30:31] 
+[08:30:31] [E2] IMU only  (['imu'])
+[08:30:31]   · voting/single     acc=0.7801  f1_macro=0.7737  f1_weighted=0.7803
+[08:30:31]   → Recorded voting: 1 methods (không chọn best trên eval split)
+[08:30:35]   · attention/single     acc=0.7801  f1_macro=0.7737  f1_weighted=0.7803
+[08:30:35]   → Recorded attention: 1 methods (không chọn best trên eval split)
+[08:30:39] 
+[08:30:39] [E3] RGB only  (['rgb'])
+[08:30:39]   · voting/single     acc=0.8660  f1_macro=0.8789  f1_weighted=0.8679
+[08:30:39]   → Recorded voting: 1 methods (không chọn best trên eval split)
+[08:30:42]   · attention/single     acc=0.8660  f1_macro=0.8789  f1_weighted=0.8679
+[08:30:42]   → Recorded attention: 1 methods (không chọn best trên eval split)
+[08:30:45] 
+[08:30:45] [E4] SK + IMU  (['skeleton', 'imu'])
+[08:30:45]   Grid search: 11 điểm, best score=0.9349
+[08:30:45]   Best weights: {'skeleton': 0.5, 'imu': 0.5}
+[08:30:45]   · voting/hard       acc=0.9531  f1_macro=0.9503  f1_weighted=0.9539
+[08:30:45]   · voting/average    acc=0.9543  f1_macro=0.9513  f1_weighted=0.9551
+[08:30:45]   · voting/weighted   acc=0.9543  f1_macro=0.9513  f1_weighted=0.9551
+[08:30:45]   → Recorded voting: 3 methods (không chọn best trên eval split)
+[08:30:54]   Fitting attention=self on 4861 train clips...
+[08:31:06]   Fitting attention=cross on 4861 train clips...
+[08:31:12]   Fitting attention=adaptive on 4861 train clips...
+[08:31:16]   Fitting attention=gate_cross on 4861 train clips...
+[08:31:23]   · attention/self       acc=0.9450  f1_macro=0.9366  f1_weighted=0.9429
+[08:31:23]   · attention/cross      acc=0.9382  f1_macro=0.9243  f1_weighted=0.9343
+[08:31:23]   · attention/adaptive   acc=0.9364  f1_macro=0.9264  f1_weighted=0.9337
+[08:31:23]   · attention/gate_cross acc=0.9481  f1_macro=0.9376  f1_weighted=0.9451
+[08:31:23]   → Recorded attention: 4 methods (không chọn best trên eval split)
+[08:31:35] 
+[08:31:35] [E5] SK + RGB  (['skeleton', 'rgb'])
+[08:31:36]   Grid search: 11 điểm, best score=0.9401
+[08:31:36]   Best weights: {'skeleton': 0.5, 'rgb': 0.5}
+[08:31:36]   · voting/hard       acc=0.9500  f1_macro=0.9476  f1_weighted=0.9504
+[08:31:36]   · voting/average    acc=0.9500  f1_macro=0.9476  f1_weighted=0.9504
+[08:31:36]   · voting/weighted   acc=0.9500  f1_macro=0.9476  f1_weighted=0.9504
+[08:31:36]   → Recorded voting: 3 methods (không chọn best trên eval split)
+[08:31:45]   Fitting attention=self on 4861 train clips...
+[08:31:54]   Fitting attention=cross on 4861 train clips...
+[08:31:59]   Fitting attention=adaptive on 4861 train clips...
+[08:32:04]   Fitting attention=gate_cross on 4861 train clips...
+[08:32:09]   · attention/self       acc=0.9599  f1_macro=0.9570  f1_weighted=0.9594
+[08:32:09]   · attention/cross      acc=0.9500  f1_macro=0.9390  f1_weighted=0.9451
+[08:32:09]   · attention/adaptive   acc=0.9568  f1_macro=0.9496  f1_weighted=0.9543
+[08:32:09]   · attention/gate_cross acc=0.9561  f1_macro=0.9471  f1_weighted=0.9523
+[08:32:09]   → Recorded attention: 4 methods (không chọn best trên eval split)
+[08:32:22] 
+[08:32:22] [E6] IMU + RGB  (['imu', 'rgb'])
+[08:32:22]   Grid search: 11 điểm, best score=0.9183
+[08:32:22]   Best weights: {'imu': 0.5, 'rgb': 0.5}
+[08:32:22]   · voting/hard       acc=0.9438  f1_macro=0.9429  f1_weighted=0.9437
+[08:32:22]   · voting/average    acc=0.9456  f1_macro=0.9445  f1_weighted=0.9455
+[08:32:22]   · voting/weighted   acc=0.9456  f1_macro=0.9445  f1_weighted=0.9455
+[08:32:22]   → Recorded voting: 3 methods (không chọn best trên eval split)
+[08:32:31]   Fitting attention=self on 4861 train clips...
+[08:32:38]   Fitting attention=cross on 4861 train clips...
+[08:32:49]   Fitting attention=adaptive on 4861 train clips...
+[08:32:57]   Fitting attention=gate_cross on 4861 train clips...
+[08:33:05]   · attention/self       acc=0.9271  f1_macro=0.9244  f1_weighted=0.9257
+[08:33:05]   · attention/cross      acc=0.9327  f1_macro=0.9287  f1_weighted=0.9304
+[08:33:05]   · attention/adaptive   acc=0.9382  f1_macro=0.9304  f1_weighted=0.9345
+[08:33:05]   · attention/gate_cross acc=0.9327  f1_macro=0.9285  f1_weighted=0.9296
+[08:33:05]   → Recorded attention: 4 methods (không chọn best trên eval split)
+[08:33:17] 
+[08:33:17] [E7] SK + IMU + RGB  (['skeleton', 'imu', 'rgb'])
+[08:33:18]   Grid search: 66 điểm, best score=0.9540
+[08:33:18]   Best weights: {'skeleton': 0.30000000000000004, 'imu': 0.4, 'rgb': 0.29999999999999993}
+[08:33:18]   · voting/hard       acc=0.9642  f1_macro=0.9626  f1_weighted=0.9646
+[08:33:18]   · voting/average    acc=0.9648  f1_macro=0.9617  f1_weighted=0.9651
+[08:33:18]   · voting/weighted   acc=0.9629  f1_macro=0.9592  f1_weighted=0.9634
+[08:33:18]   → Recorded voting: 3 methods (không chọn best trên eval split)
+[08:33:27]   Fitting attention=self on 4861 train clips...
+[08:33:34]   Fitting attention=cross on 4861 train clips...
+[08:33:40]   Fitting attention=adaptive on 4861 train clips...
+[08:33:43]   Fitting attention=gate_cross on 4861 train clips...
+[08:33:52]   · attention/self       acc=0.9660  f1_macro=0.9587  f1_weighted=0.9636
+[08:33:52]   · attention/cross      acc=0.9629  f1_macro=0.9580  f1_weighted=0.9620
+[08:33:52]   · attention/adaptive   acc=0.9605  f1_macro=0.9554  f1_weighted=0.9598
+[08:33:52]   · attention/gate_cross acc=0.9648  f1_macro=0.9562  f1_weighted=0.9621
+[08:33:52]   → Recorded attention: 4 methods (không chọn best trên eval split)
+[08:34:04] 
+[08:34:04] ✓ Saved results.csv → results.csv
+[08:34:04] ✓ Saved protocol.json and eval_clip_ids.npy
+[08:34:04] 
+[08:34:04] ======================================================================
+[08:34:04]   SUMMARY
+[08:34:04] ======================================================================
+[08:34:04] 
+[08:34:04]   Exp   Method       F1_macro      Acc  Weights
+[08:34:04]   ──────────────────────────────────────────────────────────────────
+[08:34:04]   E1    voting/single           0.9247   0.9271  {"skeleton": 1.0}
+[08:34:04]   E1    attention/single        0.9247   0.9271  {"skeleton": 1.0}
+[08:34:04]   E2    voting/single           0.7737   0.7801  {"imu": 1.0}
+[08:34:04]   E2    attention/single        0.7737   0.7801  {"imu": 1.0}
+[08:34:04]   E3    voting/single           0.8789   0.8660  {"rgb": 1.0}
+[08:34:04]   E3    attention/single        0.8789   0.8660  {"rgb": 1.0}
+[08:34:04]   E4    voting/hard             0.9503   0.9531  {"skeleton": 0.5, "imu": 0.5}
+[08:34:04]   E4    voting/average          0.9513   0.9543  {"skeleton": 0.5, "imu": 0.5}
+[08:34:04]   E4    voting/weighted         0.9513   0.9543  {"skeleton": 0.5, "imu": 0.5}
+[08:34:04]   E4    attention/self          0.9366   0.9450  {"attention": "self"}
+[08:34:04]   E4    attention/cross         0.9243   0.9382  {"attention": "cross"}
+[08:34:04]   E4    attention/adaptive      0.9264   0.9364  {"attention": "adaptive"}
+[08:34:04]   E4    attention/gate_cross     0.9376   0.9481  {"attention": "gate_cross"}
+[08:34:04]   E5    voting/hard             0.9476   0.9500  {"skeleton": 0.5, "rgb": 0.5}
+[08:34:04]   E5    voting/average          0.9476   0.9500  {"skeleton": 0.5, "rgb": 0.5}
+[08:34:04]   E5    voting/weighted         0.9476   0.9500  {"skeleton": 0.5, "rgb": 0.5}
+[08:34:04]   E5    attention/self          0.9570   0.9599  {"attention": "self"}
+[08:34:04]   E5    attention/cross         0.9390   0.9500  {"attention": "cross"}
+[08:34:04]   E5    attention/adaptive      0.9496   0.9568  {"attention": "adaptive"}
+[08:34:04]   E5    attention/gate_cross     0.9471   0.9561  {"attention": "gate_cross"}
+[08:34:04]   E6    voting/hard             0.9429   0.9438  {"imu": 0.5, "rgb": 0.5}
+[08:34:04]   E6    voting/average          0.9445   0.9456  {"imu": 0.5, "rgb": 0.5}
+[08:34:04]   E6    voting/weighted         0.9445   0.9456  {"imu": 0.5, "rgb": 0.5}
+[08:34:04]   E6    attention/self          0.9244   0.9271  {"attention": "self"}
+[08:34:04]   E6    attention/cross         0.9287   0.9327  {"attention": "cross"}
+[08:34:04]   E6    attention/adaptive      0.9304   0.9382  {"attention": "adaptive"}
+[08:34:04]   E6    attention/gate_cross     0.9285   0.9327  {"attention": "gate_cross"}
+[08:34:04]   E7    voting/hard             0.9626   0.9642  {"skeleton": 0.3333333333333333, "imu": 0.3333333333333333, "rgb": 0.3333333333333333}
+[08:34:04]   E7    voting/average          0.9617   0.9648  {"skeleton": 0.3333333333333333, "imu": 0.3333333333333333, "rgb": 0.3333333333333333}
+[08:34:04]   E7    voting/weighted         0.9592   0.9629  {"skeleton": 0.30000000000000004, "imu": 0.4, "rgb": 0.29999999999999993}
+[08:34:04]   E7    attention/self          0.9587   0.9660  {"attention": "self"}
+[08:34:04]   E7    attention/cross         0.9580   0.9629  {"attention": "cross"}
+[08:34:04]   E7    attention/adaptive      0.9554   0.9605  {"attention": "adaptive"}
+[08:34:04]   E7    attention/gate_cross     0.9562   0.9648  {"attention": "gate_cross"}
+[08:34:05] 
+[08:34:05] ✓ Saved comparison.png → comparison.png
+[08:34:05] 
+[08:34:05]   Không chọn BEST theo eval split để tránh leakage. 
+[08:34:05]   Hãy chọn method trên meta_val hoặc báo cáo từng method.
+[08:34:05]   Run dir: outputs/runs/fusion/20261023_083024_oof_test_final_ctrgcn_tcn_mc3_v2

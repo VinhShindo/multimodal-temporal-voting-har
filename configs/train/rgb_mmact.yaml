@@ -4,20 +4,35 @@ modality: rgb
 model:
   name: video_classifier
   arch: mc3_18                # nhẹ nhất
-  num_classes: 32
+  num_classes: 35
   dropout: 0.3
   pretrained: true
 
 train:
-  epochs: 25                   # 30 → 1 (verify)
-  batch_size: 4               # 4 → 2
+  epochs: 50                   # 30 → 1 (verify)
+  # Low-VRAM profile: target roughly 10 GiB on the heaviest video backbones.
+  batch_size: 4
+  # RGB batches are large after decoding to float32; too many workers can
+  # multiply prefetched batch RAM even when the frame cache is disk-backed.
+  num_workers: 4
+  # Do not preload all decoded clips; this can consume tens of GiB of RAM.
+  cache_in_memory: false
+  # Keep only a few disk-backed NPY mmap handles per worker. The full RGB
+  # cache stays on disk and the OS page cache can still reuse recently-read
+  # frames without materializing the entire dataset in Python RAM.
+  cache_max_clips: 4
+  # Keep at most one prefetched batch per worker.
+  prefetch_factor: 1
+  persistent_workers: true
+  amp: true
   optimizer: adamw
-  lr: 0.0001
+  # Lowered with the smaller batch and kept conservative for pretrained
+  # video backbones (including MViT/VideoMAE variants).
+  lr: 0.00005
   weight_decay: 0.05
   label_smoothing: 0.1
   scheduler: cosine_warmup
   warmup_epochs: 1
   early_stop_patience: 8
-  num_workers: 4
 
 output_dir: outputs/checkpoints/rgb_mmact

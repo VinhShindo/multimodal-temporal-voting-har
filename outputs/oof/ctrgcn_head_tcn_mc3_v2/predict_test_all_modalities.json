@@ -1,0 +1,40 @@
+{
+  "test_manifest": "data/processed/MMAct/manifests/multimodal_cross_view_3way/test_cross_view.csv",
+  "export_train": false,
+  "device": "cuda",
+  "modalities": {
+    "skeleton": {
+      "run_dir": "outputs/runs/skeleton/20261022_121825_bench_20261022_113258_927348_ctrgcn_head",
+      "test": {
+        "accuracy": 0.9162865575529917,
+        "f1_macro": 0.9123651712111474,
+        "f1_weighted": 0.9172981665769411,
+        "num_samples": 3727,
+        "source": "predict-only (from best.pt)",
+        "manifest": "data/processed/MMAct/manifests/multimodal_cross_view_3way/test_cross_view.csv"
+      }
+    },
+    "imu": {
+      "run_dir": "outputs/runs/imu/20261022_131738_bench_20261022_131348_512401_tcn",
+      "test": {
+        "accuracy": 0.7801111797405806,
+        "f1_macro": 0.7737170988100013,
+        "f1_weighted": 0.7803220423456443,
+        "num_samples": 1619,
+        "source": "predict-only (from best.pt)",
+        "manifest": "data/processed/MMAct/manifests/multimodal_cross_view_3way/test_cross_view.csv"
+      }
+    },
+    "rgb": {
+      "run_dir": "outputs/runs/rgb/20261022_171009_bench_20261022_171003_394805_mc3_18",
+      "test": {
+        "accuracy": 0.8618191574993292,
+        "f1_macro": 0.8723056637419232,
+        "f1_weighted": 0.8629472104433179,
+        "num_samples": 3727,
+        "source": "predict-only (from best.pt)",
+        "manifest": "data/processed/MMAct/manifests/multimodal_cross_view_3way/test_cross_view.csv"
+      }
+    }
+  }
+}

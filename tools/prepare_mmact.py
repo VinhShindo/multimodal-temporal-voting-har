@@ -29,17 +29,33 @@ from tqdm import tqdm
 # ============= CONSTANTS =============
 RAW = Path("data/raw")
 OUT = Path("data/processed/MMAct")
-
+NUM_KP = 17
 CLASSES = [
+    # 32 classes gốc
     "carrying", "checking_time", "closing", "crouching", "drinking",
     "entering", "exiting", "fall", "jumping", "kicking", "loitering",
     "looking_around", "opening", "picking_up", "pocket_in", "pocket_out",
     "pointing", "pulling", "pushing", "running", "sitting", "sitting_down",
     "standing", "standing_up", "talking", "talking_on_phone", "throwing",
     "transferring_object", "using_pc", "using_phone", "walking", "waving_hand",
+    # 3 classes mở rộng
+    "carrying_heavy", "carrying_light", "setting_down",
 ]
 CLASS2ID = {c: i for i, c in enumerate(CLASSES)}
-NUM_KP = 17
+NUM_CLASSES = len(CLASSES)  # = 35
+
+
+def normalize_action(name: str) -> str:
+    """
+    Normalize action name:
+      - lowercase
+      - strip whitespace
+      - handle case inconsistency (Carrying_light → carrying_light)
+    """
+    a = name.lower().strip()
+    # Fix typo: 'loitering' vs 'loitering' — keep as-is
+    return a
+
 HIP_L, HIP_R = 11, 12
 SHO_L, SHO_R = 5, 6
 TARGET_IMU_HZ = 50.0
@@ -194,8 +210,10 @@ def main():
                 continue
 
             for pose_json in sorted(pose_dir.glob("*.json")):
-                action = pose_json.stem
+                action_raw = pose_json.stem
+                action = normalize_action(action_raw)  # ← normalize
                 if action not in CLASS2ID:
+                    print(f"  ⚠️  Skip action: {action_raw} (không trong CLASS2ID)")
                     continue
 
                 clip_id = f"{subj}_{cam}_{scene}_{sess}_{action}"
@@ -217,7 +235,10 @@ def main():
                 # ─── IMU (không có cam trong path) ───
                 imu_path_str = ""
                 if not args.skip_imu:
-                    sensor_csv = sensor_root / subj / scene / sess / f"{action}.csv"
+                    sensor_csv = sensor_root / subj / scene / sess / f"{action_raw}.csv"
+                    # Thử cả lowercase
+                    if not sensor_csv.exists():
+                        sensor_csv = sensor_root / subj / scene / sess / f"{action}.csv"
                     if sensor_csv.exists():
                         ts, sig = parse_sensor_csv(sensor_csv)
                         if ts is not None and len(ts) >= 5:

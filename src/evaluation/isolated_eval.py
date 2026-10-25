@@ -172,17 +172,27 @@ def collect_predictions(model, loader, device: str = "cuda",
                 x, y = batch
             x = x.to(device, non_blocking=True)
 
-            logits = model(x)
+            is_multi_crop = (
+                x.ndim == 4
+                and getattr(loader.dataset, "num_eval_crops", 1) > 1
+                and not getattr(loader.dataset, "training", False)
+            )
+            if is_multi_crop:
+                batch_size, num_crops = x.shape[:2]
+                logits = model(x.flatten(0, 1)).reshape(
+                    batch_size, num_crops, -1)
+                probs = torch.softmax(logits, dim=-1).mean(dim=1)
+            else:
+                logits = model(x)
+                probs = torch.softmax(logits, dim=-1)
 
-            if tta:
+            if tta and not is_multi_crop:
                 # ★ TTA: flip trục x (dim channel) và swap L/R joints
                 x_flip = flip_skeleton_batch(x)
                 logits_flip = model(x_flip)
                 # Average probs
                 probs = (torch.softmax(logits, -1)
                          + torch.softmax(logits_flip, -1)) / 2
-            else:
-                probs = torch.softmax(logits, -1)
 
             probs = probs.cpu().numpy()
             preds = probs.argmax(axis=-1)
@@ -225,6 +235,7 @@ def full_evaluation(model, train_loader, val_loader, class_names: list,
                     out_dir, device: str = "cuda",
                     collect_train: bool = True,
                     tta: bool = False,              # ★ NEW
+                    train_clip_ids=None,
                     log_fn=None) -> dict:
     def log(msg):
         if log_fn:
@@ -260,6 +271,13 @@ def full_evaluation(model, train_loader, val_loader, class_names: list,
         train_metrics = compute_metrics(tr_labels, tr_preds, num_classes)
         np.save(out_dir / "train_probs.npy", tr_probs.astype(np.float32))
         np.save(out_dir / "train_labels.npy", tr_labels.astype(np.int64))
+        if train_clip_ids is not None:
+            train_clip_ids = np.asarray(train_clip_ids)
+            if len(train_clip_ids) != len(tr_probs):
+                raise ValueError(
+                    "train_clip_ids length does not match train predictions: "
+                    f"{len(train_clip_ids)} != {len(tr_probs)}")
+            np.save(out_dir / "train_clip_ids.npy", train_clip_ids)
 
         tr_dir = out_dir / "train"
         tr_dir.mkdir(exist_ok=True)

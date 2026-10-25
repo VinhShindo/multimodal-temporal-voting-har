@@ -1,0 +1,27 @@
+{
+  "val": {
+    "accuracy": 0.8647705929702173,
+    "f1_macro": 0.8775073895429601,
+    "f1_weighted": 0.8655962082852556,
+    "precision_macro": 0.8816853074364516,
+    "recall_macro": 0.8802134899708942,
+    "num_samples": 3727
+  },
+  "train": {
+    "accuracy": 0.9741548917903774,
+    "f1_macro": 0.9763317592841616,
+    "f1_weighted": 0.9742869949564322,
+    "precision_macro": 0.9764162307522751,
+    "recall_macro": 0.9770740578140462,
+    "num_samples": 11182
+  },
+  "tta": false,
+  "test": {
+    "accuracy": 0.8618191574993292,
+    "f1_macro": 0.8723056637419232,
+    "f1_weighted": 0.8629472104433179,
+    "num_samples": 3727,
+    "source": "predict-only (from best.pt)",
+    "manifest": "data/processed/MMAct/manifests/multimodal_cross_view_3way/test_cross_view.csv"
+  }
+}

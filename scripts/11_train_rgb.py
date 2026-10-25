@@ -9,7 +9,9 @@ Usage:
     python scripts/11_train_rgb.py --resume outputs/runs/rgb/20260927_235612_mc3_18/best.pt
 """
 import argparse
+import gc
 import sys
+import traceback
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -17,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.utils.data import DataLoader
 from sklearn.metrics import f1_score, accuracy_score
 import yaml
 from tqdm import tqdm
@@ -31,19 +34,32 @@ from src.evaluation.isolated_eval import full_evaluation
 # Train / eval
 # ============================================================
 def train_one_epoch(model, loader, optimizer, criterion, device,
-                    grad_clip=5.0):
+                    grad_clip=5.0, amp=False, scaler=None,
+                    show_progress=True):
     model.train()
     losses, preds_all, labels_all = [], [], []
-    for x, y in tqdm(loader, desc="train", leave=False):
+    for x, y in tqdm(loader, desc="train", leave=False,
+                      disable=not show_progress):
         x = x.to(device, non_blocking=True)
         y = y.to(device, non_blocking=True)
         optimizer.zero_grad()
-        logits = model(x)
-        loss = criterion(logits, y)
-        loss.backward()
-        if grad_clip > 0:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
-        optimizer.step()
+        dev_type = "cuda" if str(device).startswith("cuda") else "cpu"
+        with torch.autocast(device_type=dev_type, dtype=torch.float16,
+                            enabled=amp):
+            logits = model(x)
+        loss = criterion(logits.float(), y)
+        if scaler is not None and scaler.is_enabled():
+            scaler.scale(loss).backward()
+            if grad_clip > 0:
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            loss.backward()
+            if grad_clip > 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+            optimizer.step()
         losses.append(loss.item() * x.size(0))
         preds_all.append(logits.argmax(-1).detach().cpu().numpy())
         labels_all.append(y.cpu().numpy())
@@ -55,14 +71,18 @@ def train_one_epoch(model, loader, optimizer, criterion, device,
 
 
 @torch.no_grad()
-def evaluate(model, loader, criterion, device):
+def evaluate(model, loader, criterion, device, amp=False, show_progress=True):
     model.eval()
     losses, preds_all, labels_all = [], [], []
-    for x, y in tqdm(loader, desc="val", leave=False):
+    for x, y in tqdm(loader, desc="val", leave=False,
+                      disable=not show_progress):
         x = x.to(device, non_blocking=True)
         y = y.to(device, non_blocking=True)
-        logits = model(x)
-        losses.append(criterion(logits, y).item() * x.size(0))
+        dev_type = "cuda" if str(device).startswith("cuda") else "cpu"
+        with torch.autocast(device_type=dev_type, dtype=torch.float16,
+                            enabled=amp):
+            logits = model(x)
+        losses.append(criterion(logits.float(), y).item() * x.size(0))
         preds_all.append(logits.argmax(-1).cpu().numpy())
         labels_all.append(y.cpu().numpy())
     preds = np.concatenate(preds_all)
@@ -75,19 +95,21 @@ def evaluate(model, loader, criterion, device):
 # ============================================================
 # Main
 # ============================================================
-def main():
+def main(argv=None, shared_loaders=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/train/rgb_mmact.yaml")
     ap.add_argument("--data-cfg", default="configs/data/rgb_mmact.yaml")
     ap.add_argument("--classes-cfg", default="configs/classes_mmact.yaml")
-    ap.add_argument("--manifest-dir", default="data/processed/MMAct/manifests")
+    ap.add_argument("--manifest-dir", default=None,
+                    help="Override paths.manifest_dir from the data config")
     ap.add_argument("--device",
                     default="cuda" if torch.cuda.is_available() else "cpu")
     ap.add_argument("--arch", default=None, choices=SUPPORTED_ARCHS)
     ap.add_argument("--epochs", type=int, default=None)
     ap.add_argument("--lr", type=float, default=None)
     ap.add_argument("--batch-size", type=int, default=None)
-    ap.add_argument("--num-workers", type=int, default=4)
+    ap.add_argument("--num-workers", type=int, default=None)
+    ap.add_argument("--amp", action=argparse.BooleanOptionalAction, default=None)
     ap.add_argument("--no-pretrained", action="store_true")
     ap.add_argument("--quick-test", action="store_true",
                     help="100 samples, 1 epoch, batch=2, mc3_18")
@@ -97,7 +119,13 @@ def main():
     # ★ NEW
     ap.add_argument("--resume", type=str, default=None,
                     help="Path tới checkpoint best.pt để resume training")
-    args = ap.parse_args()
+    ap.add_argument("--benchmark-architectures", nargs="+", choices=SUPPORTED_ARCHS,
+                    default=None,
+                    help="Train architectures sequentially with one shared dataset load")
+    ap.add_argument("--benchmark-tag-prefix", default=None)
+    ap.add_argument("--quiet-progress", action="store_true",
+                    help="suppress per-batch tqdm output")
+    args = ap.parse_args(argv)
 
     # ── Set seed ──
     import random
@@ -121,12 +149,76 @@ def main():
         cfg = yaml.safe_load(f)
 
     arch = args.arch or cfg["model"].get("arch", "mc3_18")
+    cfg["model"]["arch"] = arch
+    cfg["model"]["pretrained"] = not args.no_pretrained
+    cfg["seed"] = args.seed
+    num_workers = (args.num_workers if args.num_workers is not None
+                   else cfg["train"].get("num_workers", 4))
+    amp = (cfg["train"].get("amp", False) if args.amp is None else args.amp)
+    amp = bool(amp) and str(args.device).startswith("cuda")
+    if amp:
+        torch.backends.cudnn.benchmark = True
     if args.epochs is not None:
         cfg["train"]["epochs"] = args.epochs
     if args.lr is not None:
         cfg["train"]["lr"] = args.lr
     if args.batch_size is not None:
         cfg["train"]["batch_size"] = args.batch_size
+
+    if args.benchmark_architectures:
+        if shared_loaders is not None:
+            raise ValueError("Benchmark orchestration cannot reuse nested shared loaders")
+        benchmark_loaders = build_loaders(
+            args.manifest_dir, args.data_cfg, cfg["train"]["batch_size"],
+            num_workers=num_workers, max_samples=args.max_samples,
+            # Benchmark architectures must share lightweight on-demand
+            # loaders; never preload all RGB clips into RAM.
+            cache_in_memory=False,
+            cache_max_clips=int(cfg["train"].get("cache_max_clips", 4)),
+            prefetch_factor=int(cfg["train"].get("prefetch_factor", 1)),
+            persistent_workers=bool(cfg["train"].get("persistent_workers", True)))
+        tag_prefix = args.benchmark_tag_prefix or "rgb_benchmark"
+        for benchmark_arch in args.benchmark_architectures:
+            benchmark_args = [
+                "--config", args.config,
+                "--data-cfg", args.data_cfg,
+                "--classes-cfg", args.classes_cfg,
+                "--device", args.device,
+                "--arch", benchmark_arch,
+                "--seed", str(args.seed),
+                "--tag", f"{tag_prefix}_{benchmark_arch}",
+                "--quiet-progress",
+            ]
+            if args.manifest_dir is not None:
+                benchmark_args.extend(["--manifest-dir", args.manifest_dir])
+            if args.epochs is not None:
+                benchmark_args.extend(["--epochs", str(args.epochs)])
+            if args.lr is not None:
+                benchmark_args.extend(["--lr", str(args.lr)])
+            if args.batch_size is not None:
+                benchmark_args.extend(["--batch-size", str(args.batch_size)])
+            if args.num_workers is not None:
+                benchmark_args.extend(["--num-workers", str(args.num_workers)])
+            if args.amp is not None:
+                benchmark_args.append("--amp" if args.amp else "--no-amp")
+            if args.no_pretrained:
+                benchmark_args.append("--no-pretrained")
+            if args.max_samples is not None:
+                benchmark_args.extend(["--max-samples", str(args.max_samples)])
+            print(f"\n[RGB benchmark] Training {benchmark_arch} with shared loaders")
+            try:
+                main(benchmark_args, shared_loaders=benchmark_loaders)
+            except Exception:
+                traceback.print_exc()
+            finally:
+                # A failed forward (especially CUDA OOM) can leave Python
+                # traceback frames holding the model and its CUDA tensors.
+                # Release them before starting the next architecture in the
+                # same benchmark process.
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+        return
 
     # ── RESUME: load checkpoint info ──
     resume_ckpt = None
@@ -164,6 +256,7 @@ def main():
     run.info(f"  Pretrained:  {not args.no_pretrained}")
     run.info(f"  Epochs:      {cfg['train']['epochs']}")
     run.info(f"  Batch:       {cfg['train']['batch_size']}")
+    run.info(f"  AMP:         {amp}")
     run.info(f"  Max samples: {args.max_samples or 'all'}")
     run.info(f"  Seed:        {args.seed}")
     if args.resume:
@@ -175,9 +268,16 @@ def main():
 
     # ── Data ──
     run.info("[Data] Loading...")
-    train_loader, val_loader = build_loaders(
-        args.manifest_dir, args.data_cfg, cfg["train"]["batch_size"],
-        num_workers=args.num_workers, max_samples=args.max_samples)
+    if shared_loaders is None:
+        train_loader, val_loader = build_loaders(
+            args.manifest_dir, args.data_cfg, cfg["train"]["batch_size"],
+            num_workers=num_workers, max_samples=args.max_samples,
+            cache_in_memory=bool(cfg["train"].get("cache_in_memory", False)),
+            cache_max_clips=int(cfg["train"].get("cache_max_clips", 4)),
+            prefetch_factor=int(cfg["train"].get("prefetch_factor", 1)),
+            persistent_workers=bool(cfg["train"].get("persistent_workers", True)))
+    else:
+        train_loader, val_loader = shared_loaders
     run.info(f"[Data] train={len(train_loader.dataset)} "
              f"val={len(val_loader.dataset)}")
 
@@ -212,6 +312,7 @@ def main():
         {"params": backbone_params, "lr": cfg["train"]["lr"]},
         {"params": head_params,     "lr": cfg["train"]["lr"] * 5},
     ], weight_decay=cfg["train"]["weight_decay"])
+    scaler = torch.amp.GradScaler("cuda", enabled=amp)
 
     epochs = cfg["train"]["epochs"]
     warmup = min(cfg["train"].get("warmup_epochs", 2), max(1, epochs // 2))
@@ -247,9 +348,12 @@ def main():
     for epoch in range(start_epoch, epochs):
         with Timer() as t:
             tr_loss, tr_acc, tr_f1 = train_one_epoch(
-                model, train_loader, optimizer, criterion, args.device)
+                model, train_loader, optimizer, criterion, args.device,
+                amp=amp, scaler=scaler,
+                show_progress=not args.quiet_progress)
             va_loss, va_acc, va_f1 = evaluate(
-                model, val_loader, criterion, args.device)
+                model, val_loader, criterion, args.device, amp=amp,
+                show_progress=not args.quiet_progress)
             scheduler.step()
 
         lr_now = optimizer.param_groups[0]["lr"]
@@ -314,11 +418,27 @@ def main():
         else:
             run.info(f"  Không có best.pt — dùng model cuối")
 
+        # The training loader uses a weighted sampler and random augmentation.
+        # Re-evaluate its dataset deterministically in manifest order before
+        # exporting train_probs for attention meta-fusion.
+        train_eval_dataset = train_loader.dataset
+        train_eval_dataset.augment = False
+        train_eval_loader = DataLoader(
+            train_eval_dataset, batch_size=train_loader.batch_size,
+            shuffle=False, num_workers=num_workers, pin_memory=True,
+            drop_last=False, persistent_workers=num_workers > 0,
+            **({"prefetch_factor": int(cfg["train"].get("prefetch_factor", 1))}
+               if num_workers > 0 else {}))
+        train_clip_ids = train_eval_dataset.df["clip_id"].astype(str).tolist()
+
         class_names = load_class_names(args.classes_cfg)
         val_metrics = full_evaluation(
-            model, train_loader, val_loader, class_names,
+            model, train_eval_loader, val_loader, class_names,
             out_dir=run.path, device=args.device,
-            collect_train=False,
+            # Save train predictions as well so the attention meta-fusion can
+            # be fitted without using the external validation labels.
+            collect_train=True,
+            train_clip_ids=train_clip_ids,
             log_fn=run.info)
 
         run.info("")
