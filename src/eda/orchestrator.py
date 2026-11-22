@@ -24,7 +24,7 @@ def run_all_eda(manifest_dir: Path, class_names: list,
     log("=" * 70)
     try:
         results["skeleton"] = run_skeleton_eda(
-            Path(manifest_dir) / "train_cross_view.csv",
+            Path(manifest_dir) / "skeleton" / "train.csv",
             class_names,
             output_root / "skeleton",
             log_fn=log)
@@ -39,7 +39,7 @@ def run_all_eda(manifest_dir: Path, class_names: list,
     log("=" * 70)
     try:
         results["imu"] = run_imu_eda(
-            Path(manifest_dir) / "train_cross_view.csv",
+            Path(manifest_dir) / "imu" / "train.csv",
             class_names,
             output_root / "imu",
             log_fn=log)
@@ -54,7 +54,7 @@ def run_all_eda(manifest_dir: Path, class_names: list,
     log("=" * 70)
     try:
         results["rgb"] = run_rgb_eda(
-            Path(manifest_dir) / "train_cross_view.csv",
+            Path(manifest_dir) / "rgb" / "train.csv",
             class_names,
             output_root / "rgb",
             log_fn=log)

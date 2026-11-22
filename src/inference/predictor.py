@@ -16,7 +16,10 @@ class ContinuousPredictor:
     """Load 3 best.pt từ outputs/runs/, predict on window."""
 
     def __init__(self, runs_root="outputs/runs", device="cuda",
-                 train_manifest="data/processed/MMAct/manifests/train_cross_view.csv"):
+                 train_manifest=(
+                     "data/processed/MMAct/manifests/protocols/"
+                     "x_view/imu/train.csv"
+                 )):
         self.device = device
         self.runs_root = Path(runs_root)
         self.train_manifest = train_manifest

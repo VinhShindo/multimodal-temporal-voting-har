@@ -7,22 +7,24 @@ per-file implementation under src/models/rgb/.
 import torch
 import torch.nn as nn
 
-from src.models.rgb.mc3_18 import MC3_18Classifier
+from src.models.rgb.mc3_18 import (
+    MC3_18Classifier,
+    MC3_18TemporalPyramidClassifier,
+)
 from src.models.rgb.mvit_v2_s import MViTV2SClassifier
-from src.models.rgb.r2plus1d_18 import R2Plus1D18Classifier
 from src.models.rgb.r3d_18 import R3D18Classifier
 from src.models.rgb.s3d import S3DClassifier
 from src.models.rgb.videomae import VideoMAEClassifier
 from src.models.rgb.videomae2 import VideoMAE2Classifier
 
 SUPPORTED_ARCHS = [
-    "r2plus1d_18", "r3d_18", "mc3_18", "s3d", "mvit_v2_s",
-    "videomae", "videomae2",
+    "r3d_18", "mc3_18", "s3d", "mvit_v2_s",
+    "mc3_18_temporal_pyramid", "videomae", "videomae2",
 ]
 ARCH_BUILDERS = {
-    "r2plus1d_18": R2Plus1D18Classifier,
     "r3d_18": R3D18Classifier,
     "mc3_18": MC3_18Classifier,
+    "mc3_18_temporal_pyramid": MC3_18TemporalPyramidClassifier,
     "s3d": S3DClassifier,
     "mvit_v2_s": MViTV2SClassifier,
     "videomae": VideoMAEClassifier,
@@ -54,7 +56,7 @@ def build_backbone(arch: str, num_classes: int,
                               dropout=dropout), "BCTHW"
 
 
-def build_video_model(arch: str = "r2plus1d_18",
+def build_video_model(arch: str = "mc3_18",
                       num_classes: int = 32,
                       pretrained: bool = True,
                       dropout: float = 0.3) -> VideoClassifier:

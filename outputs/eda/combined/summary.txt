@@ -2,8 +2,8 @@
   MMAct — EDA COMBINED SUMMARY
 ======================================================================
 
-  skeleton    clips= 11182  classes=35  min/class= 135  quality_ok=100.0%
-  imu         clips= 11182  classes=35  min/class= 135  quality_ok=100.0%
-  rgb         clips= 11182  classes=35  min/class= 135  quality_ok=100.0%
+  skeleton    clips= 27527  classes=35  min/class= 356  quality_ok=98.0%
+  imu         clips=  8679  classes=35  min/class= 100  quality_ok=100.0%
+  rgb         clips= 27527  classes=35  min/class= 356  quality_ok=100.0%
 
   Saved class_balance_3mod.png

@@ -1,15 +1,12 @@
 """
-CTR-GCN cho MMAct (COCO 17 keypoint, 2D) — 3 kiến trúc chọn bằng `build_model(arch=...)`:
+CTR-GCN cho MMAct (COCO 17 keypoint, 2D) — kiến trúc chọn bằng `build_model(arch=...)`:
 
   "ctrgcn"       : baseline 10 layer + GAP (class CTRGCN, GIỮ NGUYÊN tên tham số
                    data_bn / layers / fc → load được checkpoint của run cũ)
   "ctrgcn_head"  : global CTR-GCN 10 layer + PartTransformerHead thay GAP        (ablation R2)
-  "dual"         : global branch + upper-body branch + part transformer head     (ablation R3/R4)
 
 Input:
   ctrgcn / ctrgcn_head : (B, C, T, 17)            C = 6 (base) hoặc 11 (rich)
-  dual                 : (B, 18, T, 17)           = 11 kênh global || 7 kênh upper (pad V 9→17)
-                         → gói chung 1 tensor để full_evaluation / fusion không phải sửa.
 Output: logits (B, num_classes). `forward(x, return_feat=True)` trả thêm feature trước FC.
 """
 import math
@@ -40,14 +37,6 @@ COCO_EDGES = [
 # 6 bộ phận để pooling trước transformer: đầu, tay T, tay P, thân, chân T, chân P
 PARTS = [[0, 1, 2, 3, 4], [5, 7, 9], [6, 8, 10], [5, 6, 11, 12],
          [11, 13, 15], [12, 14, 16]]
-
-# Upper-body (V=9): mũi, 2 mắt, 2 vai, 2 khuỷu, 2 cổ tay (chỉ số COCO gốc)
-UB_JOINTS = [0, 1, 2, 5, 6, 7, 8, 9, 10]
-# Trong chỉ số cục bộ 0..8: 0 nose,1 leye,2 reye,3 lsho,4 rsho,5 lelb,6 relb,7 lwri,8 rwri
-UB_EDGES = [(0, 1), (0, 2), (0, 3), (0, 4), (3, 4),
-            (3, 5), (5, 7), (4, 6), (6, 8)]
-UB_CENTER = 3
-
 
 def build_A_3subset(num_joints: int = 17, edges=COCO_EDGES,
                     center: int = 11) -> np.ndarray:
@@ -291,13 +280,6 @@ def global_layer_cfg(in_c: int, c: int = 64):
             (2 * c, 4 * c, 2, True), (4 * c, 4 * c, 1, True), (4 * c, 4 * c, 1, True)]
 
 
-def upper_layer_cfg(in_c: int, c: int = 64):
-    # 6 layer: T 64→32→16
-    return [(in_c, c, 1, False), (c, c, 1, True),
-            (c, 2 * c, 2, True), (2 * c, 2 * c, 1, True),
-            (2 * c, 4 * c, 2, True), (4 * c, 4 * c, 1, True)]
-
-
 # ============================================================
 # Part-token Transformer head
 # ============================================================
@@ -409,52 +391,9 @@ class CTRGCNPart(nn.Module):
 
 
 # ============================================================
-# dual: global (11ch, 17 khớp) + upper-body (7ch, 9 khớp) + head
-# ============================================================
-class DualBranchCTRGCN(nn.Module):
-    G_CH = 11
-    U_CH = 7
-    U_V = len(UB_JOINTS)      # 9
-
-    def __init__(self, num_classes: int = 32, num_joints: int = 17,
-                 in_channels: int = 18, target_len: int = 64,
-                 base_channels: int = 64, dropout: float = 0.4,
-                 depth: int = 2, heads: int = 4, drop_path: float = 0.1,
-                 part_drop: float = 0.1):
-        super().__init__()
-        assert in_channels == self.G_CH + self.U_CH, \
-            f"dual cần in_channels={self.G_CH + self.U_CH}, nhận {in_channels}"
-        c4 = base_channels * 4
-
-        self.global_branch = GCNBackbone(
-            self.G_CH, num_joints, build_A_3subset(num_joints),
-            global_layer_cfg(self.G_CH, base_channels))
-        self.upper_branch = GCNBackbone(
-            self.U_CH, self.U_V,
-            build_A_3subset(self.U_V, UB_EDGES, UB_CENTER),
-            upper_layer_cfg(self.U_CH, base_channels))
-        self.head = PartTransformerHead(c4, _t_out(target_len), num_joints,
-                                        depth, heads, 0.1, drop_path, part_drop)
-        self.norm = nn.LayerNorm(2 * c4)
-        self.dropout = nn.Dropout(dropout)
-        self.fc = nn.Linear(2 * c4, num_classes)
-        nn.init.normal_(self.fc.weight, 0, 0.01)
-        nn.init.zeros_(self.fc.bias)
-
-    def forward(self, x, return_feat: bool = False):
-        g = x[:, :self.G_CH]                                            # (B, 11, T, 17)
-        u = x[:, self.G_CH:self.G_CH + self.U_CH, :, :self.U_V]         # (B, 7, T, 9)
-        fg = self.head(self.global_branch(g))                           # (B, 256)
-        fu = self.upper_branch(u).mean(dim=(2, 3))                      # (B, 256)
-        feat = self.norm(torch.cat([fg, fu], dim=1))                    # (B, 512)
-        out = self.fc(self.dropout(feat))
-        return (out, feat) if return_feat else out
-
-
-# ============================================================
 # Factory
 # ============================================================
-def build_model(arch: str = "dual", num_classes: int = 35, num_joints: int = 17,
+def build_model(arch: str = "ctrgcn_head", num_classes: int = 35, num_joints: int = 17,
                 in_channels: int = None, target_len: int = 64, **kw):
     arch = str(arch).lower()
     if arch == "ctrgcn":
@@ -466,9 +405,6 @@ def build_model(arch: str = "dual", num_classes: int = 35, num_joints: int = 17,
     if arch == "ctrgcn_head":
         return CTRGCNPart(num_classes, num_joints, in_channels or 11,
                           target_len, **common)
-    if arch == "dual":
-        return DualBranchCTRGCN(num_classes, num_joints, in_channels or 18,
-                                target_len, **common)
     raise ValueError(f"Unknown arch: {arch}")
 
 
@@ -480,7 +416,7 @@ def build_ctrgcn(num_classes: int = 35, num_joints: int = 17,
 
 
 if __name__ == "__main__":
-    for arch, ch in [("ctrgcn", 6), ("ctrgcn_head", 11), ("dual", 18)]:
+    for arch, ch in [("ctrgcn", 6), ("ctrgcn_head", 11)]:
         m = build_model(arch, 32, 17, ch, target_len=64)
         x = torch.randn(2, ch, 64, 17)
         y, f = m(x, return_feat=True)

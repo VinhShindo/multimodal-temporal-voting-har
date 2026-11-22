@@ -2,19 +2,17 @@ dataset: mmact
 modality: rgb
 
 paths:
-  manifest_dir: data/processed/MMAct/manifests/multimodal_cross_view_3way
-  train_manifest: train_cross_view.csv
-  val_manifest: val_cross_view.csv
-  test_manifest: test_cross_view.csv
-  test_available: true
-  test_note: "Internal group-disjoint multimodal test split"
+  manifest_dir: data/processed/MMAct/manifests/protocols
+  protocol: x_view
+  train_manifest: train.csv
+  val_manifest: val.csv
 
 sampling:
-  num_frames: 8               # 16 → 8 (verify nhanh)
+  num_frames: 16
   stride: 1
 
 transform:
-  resize: 224                  # 224 → 96 (verify nhanh)
+  resize: 224
   crop_pct: 0.875
   mean: [0.45, 0.45, 0.45]
   std:  [0.225, 0.225, 0.225]

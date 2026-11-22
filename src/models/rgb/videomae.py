@@ -18,12 +18,15 @@ def _load_checkpoint(model: nn.Module) -> None:
         filename="model.safetensors",
     )
     source = load_file(checkpoint_path, device="cpu")
+    target = model.state_dict()
     for index in range(12):
         prefix = f"videomae.encoder.layer.{index}.attention.attention."
         query_bias = source.pop(prefix + "q_bias")
         value_bias = source.pop(prefix + "v_bias")
         source[prefix + "query.bias"] = query_bias
-        source[prefix + "key.bias"] = torch.zeros_like(query_bias)
+        key_bias = prefix + "key.bias"
+        if key_bias in target:
+            source[key_bias] = torch.zeros_like(query_bias)
         source[prefix + "value.bias"] = value_bias
     model.load_state_dict(source, strict=True)
 

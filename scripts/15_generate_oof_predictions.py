@@ -12,8 +12,8 @@ combined artifacts into the selected full-training run directories:
     oof_train_labels.npy
     oof_train_clip_ids.npy
 
-The final test predictions must still come from the selected full-training
-checkpoints; OOF models are only used to fit voting weights/attention.
+OOF predictions fit voting weights/attention; validation predictions from
+the selected full-training checkpoints are used for reporting.
 """
 from __future__ import annotations
 
@@ -26,6 +26,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedGroupKFold
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from src.common.manifest_paths import MM_ACT_PROTOCOLS
 
 
 EVENT_COLUMNS = ["subject", "scene", "session", "action"]
@@ -43,8 +47,10 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--manifest-dir",
-        default="data/processed/MMAct/manifests/multimodal_cross_view_3way",
+        default=None,
+        help="Override the selected protocol directory.",
     )
+    parser.add_argument("--protocol", choices=MM_ACT_PROTOCOLS, default="x_view")
     parser.add_argument(
         "--output-dir",
         default="outputs/oof/ctrgcn_head_tcn_mc3",
@@ -70,6 +76,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rgb-epochs", type=int, default=None)
     parser.add_argument("--max-samples", type=int, default=None,
                         help="Smoke test only; do not use for final OOF")
+    parser.add_argument(
+        "--allow-incomplete-audit",
+        action="store_true",
+        help="Continue when the manifest audit is not PASS; results may not "
+             "represent a complete upload.",
+    )
     return parser.parse_args()
 
 
@@ -102,8 +114,8 @@ def run_command(command: list[str], log_path: Path) -> None:
                        check=True)
 
 
-def latest_results(output_root: Path, modality: str) -> Path:
-    results = list((output_root / modality).glob("cross_view_*/results.csv"))
+def latest_results(output_root: Path, modality: str, protocol: str) -> Path:
+    results = list((output_root / modality).glob(f"{protocol}_*/results.csv"))
     if not results:
         raise FileNotFoundError(
             f"No benchmark results found for {modality} under {output_root}")
@@ -124,14 +136,14 @@ def train_fold(
         "scripts/13_benchmark_models.py",
         "--modality", modality,
         "--mode", "train",
-        "--split", "cross_view",
+        "--protocol", args.protocol,
         "--architectures", architecture,
-        "--manifest-dir", str(fold_manifest_dir),
+        "--manifest-dir", str(fold_manifest_dir / modality),
         "--run-root", "outputs/runs",
         "--output-root", str(output_root),
         "--seed", str(args.seed + fold),
         "--num-workers", str(args.num_workers),
-        "--allow-camera-overlap",
+        "--oof-fold",
     ]
     batch_size = {
         "skeleton": args.skeleton_batch_size,
@@ -149,7 +161,7 @@ def train_fold(
     if args.max_samples is not None:
         command += ["--max-samples", str(args.max_samples)]
     run_command(command, fold_output_dir / f"{modality}.benchmark.log")
-    result_path = latest_results(output_root, modality)
+    result_path = latest_results(output_root, modality, args.protocol)
     results = pd.read_csv(result_path)
     if len(results) != 1:
         raise RuntimeError(f"Expected one {modality} OOF run in {result_path}")
@@ -244,11 +256,41 @@ def main() -> None:
     args = parse_args()
     if args.folds < 2:
         raise ValueError("--folds must be at least 2")
-    manifest_dir = Path(args.manifest_dir)
-    train_manifest = manifest_dir / "train_cross_view.csv"
-    if not train_manifest.exists():
-        raise FileNotFoundError(train_manifest)
-    source = pd.read_csv(train_manifest)
+    manifest_dir = Path(args.manifest_dir) if args.manifest_dir else (
+        Path("data/processed/MMAct/manifests/protocols") / args.protocol
+    )
+    audit_path = manifest_dir.parent / "protocol_manifest_audit.json"
+    if audit_path.is_file():
+        manifest_audit = json.loads(audit_path.read_text(encoding="utf-8"))
+        if (manifest_audit.get("status") != "PASS"
+                and not args.allow_incomplete_audit):
+            raise RuntimeError(
+                f"OOF generation requires complete protocol manifests; "
+                f"status={manifest_audit.get('status')}, audit={audit_path}"
+            )
+        if manifest_audit.get("status") != "PASS":
+            print(
+                f"WARNING: proceeding with manifest audit status="
+                f"{manifest_audit.get('status')} by explicit request",
+                flush=True,
+            )
+    alignment_manifest = manifest_dir / "alignment" / "train.csv"
+    modality_manifests = {
+        modality: manifest_dir / modality / "train.csv"
+        for modality in MODALITIES
+    }
+    missing = [
+        path for path in [alignment_manifest, *modality_manifests.values()]
+        if not path.is_file()
+    ]
+    if missing:
+        raise FileNotFoundError(f"Missing protocol train manifest(s): {missing}")
+    source = pd.read_csv(alignment_manifest)
+    for path in modality_manifests.values():
+        modality_source = pd.read_csv(path)
+        if "clip_id" not in modality_source:
+            raise ValueError(f"{path} is missing clip_id")
+    train_manifest = alignment_manifest
     required = {"clip_id", "class_id", *EVENT_COLUMNS}
     required.update(f"{modality}_path" for modality in MODALITIES)
     missing = sorted(required - set(source.columns))
@@ -282,13 +324,28 @@ def main() -> None:
 
     for fold, (train_idx, val_idx) in enumerate(fold_splits):
         fold_dir = output_dir / f"fold_{fold:02d}"
-        fold_manifest_dir = fold_dir / "manifests"
-        fold_manifest_dir.mkdir(parents=True, exist_ok=True)
-        train_part = source.iloc[train_idx].reset_index(drop=True)
-        val_part = source.iloc[val_idx].reset_index(drop=True)
-        train_part.to_csv(fold_manifest_dir / "train_cross_view.csv", index=False)
-        val_part.to_csv(fold_manifest_dir / "val_cross_view.csv", index=False)
-
+        fold_manifest_dir = fold_dir / "manifests" / args.protocol
+        train_ids = set(source.iloc[train_idx]["clip_id"].astype(str))
+        val_ids = set(source.iloc[val_idx]["clip_id"].astype(str))
+        for modality, full_manifest in modality_manifests.items():
+            modality_source = pd.read_csv(full_manifest)
+            modality_train = modality_source[
+                modality_source["clip_id"].astype(str).isin(train_ids)
+            ].reset_index(drop=True)
+            modality_val = modality_source[
+                modality_source["clip_id"].astype(str).isin(val_ids)
+            ].reset_index(drop=True)
+            if modality_train.empty or modality_val.empty:
+                raise ValueError(
+                    f"Empty {modality} OOF fold {fold}: "
+                    f"train={len(modality_train)}, val={len(modality_val)}"
+                )
+            modality_dir = fold_manifest_dir / modality
+            modality_dir.mkdir(parents=True, exist_ok=True)
+            modality_train.to_csv(modality_dir / "train.csv", index=False)
+            modality_val.to_csv(modality_dir / "val.csv", index=False)
+        train_part = source.iloc[train_idx]
+        val_part = source.iloc[val_idx]
         record = {
             "fold": fold,
             "train_rows": int(len(train_part)),
@@ -299,7 +356,7 @@ def main() -> None:
             fold_run_dir = train_fold(
                 modality, architectures[modality], fold,
                 fold_manifest_dir, fold_dir, args)
-            val_manifest = fold_manifest_dir / "val_cross_view.csv"
+            val_manifest = fold_manifest_dir / modality / "val.csv"
             fold_predictions[modality].append(
                 collect_fold_prediction(fold_run_dir, val_manifest, modality))
             record["run_dirs"][modality] = str(fold_run_dir)
@@ -316,7 +373,7 @@ def main() -> None:
     }
     for modality in MODALITIES:
         summary["modalities"][modality] = aggregate_oof(
-            output_dir, train_manifest, modality,
+            output_dir, modality_manifests[modality], modality,
             fold_predictions[modality], selected_runs[modality])
 
     summary_path = output_dir / "oof_summary.json"

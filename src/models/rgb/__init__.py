@@ -1,15 +1,19 @@
-from .mc3_18 import MC3_18Classifier, build_mc3_18
+from .mc3_18 import (
+    MC3_18Classifier,
+    MC3_18TemporalPyramidClassifier,
+    build_mc3_18,
+    build_mc3_18_temporal_pyramid,
+)
 from .mvit_v2_s import MViTV2SClassifier, build_mvit_v2_s
-from .r2plus1d_18 import R2Plus1D18Classifier, build_r2plus1d_18
 from .r3d_18 import R3D18Classifier, build_r3d_18
 from .s3d import S3DClassifier, build_s3d
 from .videomae import VideoMAEClassifier, build_videomae
 from .videomae2 import VideoMAE2Classifier, build_videomae2
 
 __all__ = [
-    "R2Plus1D18Classifier",
     "R3D18Classifier",
     "MC3_18Classifier",
+    "MC3_18TemporalPyramidClassifier",
     "S3DClassifier",
     "MViTV2SClassifier",
     "VideoMAEClassifier",
@@ -21,10 +25,6 @@ __all__ = [
 def build_model(arch: str = "mc3_18", num_classes: int = 35,
                pretrained: bool = True, dropout: float = 0.3):
     arch = arch.lower()
-    if arch == "r2plus1d_18":
-        return build_r2plus1d_18(num_classes=num_classes,
-                                pretrained=pretrained,
-                                dropout=dropout)
     if arch == "r3d_18":
         return build_r3d_18(num_classes=num_classes,
                             pretrained=pretrained,
@@ -33,6 +33,12 @@ def build_model(arch: str = "mc3_18", num_classes: int = 35,
         return build_mc3_18(num_classes=num_classes,
                            pretrained=pretrained,
                            dropout=dropout)
+    if arch == "mc3_18_temporal_pyramid":
+        return build_mc3_18_temporal_pyramid(
+            num_classes=num_classes,
+            pretrained=pretrained,
+            dropout=dropout,
+        )
     if arch == "s3d":
         return build_s3d(num_classes=num_classes,
                         pretrained=pretrained,

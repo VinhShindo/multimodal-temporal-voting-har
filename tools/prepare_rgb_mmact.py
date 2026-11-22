@@ -1,151 +1,106 @@
-"""
-prepare_rgb_mmact.py — Thêm cột rgb_path vào manifest skeleton/IMU.
+"""Attach RGB video paths to the source scene/view manifests."""
+from __future__ import annotations
 
-Usage:
-    python tools/prepare_rgb_mmact.py
-    python tools/prepare_rgb_mmact.py --verify-only
-"""
 import argparse
-import sys
 from pathlib import Path
 
 import pandas as pd
 from tqdm import tqdm
 
 
-# ============================================================
-# PATTERN ĐÚNG (đã verify từ check_rgb_structure)
-# ============================================================
-TRAIN_VIDEO_TPL = (
-    "data/raw/cross_view_video/"
-    "trimmed_x-view_{subj}/video/cross_view/trainval/"
-    "{subj}/{cam}/{scene}/{session}/{action}.mp4"
-)
-
-MANIFEST_DIR = "data/processed/MMAct/manifests"
+IDENTITY_COLUMNS = ("subject", "cam", "scene", "session", "action")
 
 
-def resolve_train_rgb(row, root: Path):
-    """Tìm video RGB tương ứng với 1 manifest row."""
-    subj = row["subject"]          # "subject1"
-    cam = row["cam"]               # "cam1"
-    scene = row["scene"]           # "scene1"
-    session = row["session"]       # "session1"
-    action = row["action"]         # "carrying"
-
-    rel_path = TRAIN_VIDEO_TPL.format(
-        subj=subj, cam=cam, scene=scene, session=session, action=action
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--source-dir", default="data/processed/MMAct/source_manifests",
+        help="Directory containing train/val_cross_{scene,view}.csv.",
     )
-    p = root / rel_path
-    if p.is_file():
-        return str(p)
-
-    if p.parent.is_dir():
-        match = next((candidate for candidate in p.parent.iterdir()
-                      if candidate.is_file()
-                      and candidate.suffix.lower() == p.suffix.lower()
-                      and candidate.stem.casefold() == p.stem.casefold()), None)
-        if match is not None:
-            return str(match)
-    return ""
+    parser.add_argument(
+        "--raw-root", default="data/raw",
+        help="Raw data root; nested data/raw/trimmed is detected automatically.",
+    )
+    parser.add_argument("--video-root", default=None,
+                        help="Override the root containing extracted videos.")
+    parser.add_argument("--verify-only", action="store_true",
+                        help="Resolve and report paths without modifying manifests.")
+    return parser.parse_args()
 
 
-def process_manifest(csv_path: Path, root: Path, verify_only: bool = False):
-    print(f"\n{'='*70}")
-    print(f"  {csv_path.name}")
-    print(f"{'='*70}")
-
-    df = pd.read_csv(csv_path)
-    print(f"  Total rows: {len(df)}")
-
-    if "rgb_path" in df.columns and verify_only:
-        paths = df["rgb_path"].fillna("").astype(str)
-        exists = paths.map(lambda value: Path(value).is_file() if value else False)
-        print(f"  RGB file tồn tại: {exists.sum()}/{len(df)}")
-        return
-
-    # Resolve từng row
-    rgb_paths = []
-    for _, row in tqdm(df.iterrows(), total=len(df), desc="resolving"):
-        rgb_paths.append(resolve_train_rgb(row, root))
-
-    df["rgb_path"] = rgb_paths
-
-    # Stats
-    n_ok = sum(1 for p in rgb_paths if p)
-    n_missing = len(df) - n_ok
-    pct = 100.0 * n_ok / len(df) if len(df) else 0
-
-    print(f"  ✓ Found:   {n_ok}/{len(df)}  ({pct:.1f}%)")
-    print(f"  ✗ Missing: {n_missing}/{len(df)}")
-
-    # Sample missing
-    if n_missing > 0:
-        missing = df[df["rgb_path"] == ""].head(5)
-        print(f"\n  Ví dụ missing (5 dòng đầu):")
-        for _, r in missing.iterrows():
-            print(f"    · {r['clip_id']}")
-
-    # Save
-    if not verify_only:
-        df.to_csv(csv_path, index=False)
-        print(f"\n  ✓ Đã lưu: {csv_path}")
+def _raw_root(path: Path) -> Path:
+    nested = path / "trimmed"
+    return nested if (nested / "trimmed_splits").is_dir() else path
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--verify-only", action="store_true",
-                    help="Chỉ kiểm tra, không ghi lại manifest")
-    args = ap.parse_args()
-
-    root = Path.cwd()
-    if not (root / "src").exists():
-        print("✗ Chạy script từ project root.")
-        sys.exit(1)
-
-    mf_dir = root / MANIFEST_DIR
-    if not mf_dir.exists():
-        print(f"✗ Không có {mf_dir}")
-        sys.exit(1)
-
-    # Backup manifest cũ
-    if not args.verify_only:
-        backup_dir = mf_dir / "_backup"
-        backup_dir.mkdir(exist_ok=True)
-        for csv in mf_dir.glob("*.csv"):
-            backup = backup_dir / csv.name
-            if not backup.exists():
-                csv.rename(backup)  # chuyển cũ vào backup
-                csv.write_text(backup.read_text(), encoding="utf-8")
-        print(f"✓ Backup manifest cũ → {backup_dir.relative_to(root)}")
-
-    # Process cả 2 manifest
-    for csv_name in ["train_cross_view.csv", "val_cross_view.csv"]:
-        csv_path = mf_dir / csv_name
-        if not csv_path.exists():
-            print(f"⚠️  Bỏ qua: {csv_name} không tồn tại")
+def _video_index(video_root: Path) -> dict[tuple[str, ...], str]:
+    if not video_root.is_dir():
+        print(f"[WARN] RGB video directory is not available yet: {video_root}")
+        return {}
+    index: dict[tuple[str, ...], str] = {}
+    for path in sorted(
+        candidate for candidate in video_root.rglob("*")
+        if candidate.is_file() and candidate.suffix.casefold() == ".mp4"
+    ):
+        parts = {part.casefold() for part in path.parts}
+        key_prefix = ("subject", "cam", "scene", "session")
+        for part in parts:
+            if part.startswith("subject") and part[7:].isdigit():
+                subject = part
+                break
+        else:
             continue
-        process_manifest(csv_path, root, args.verify_only)
+        values = [subject]
+        for prefix in key_prefix[1:]:
+            match = next(
+                (part for part in parts
+                 if part.startswith(prefix) and part[len(prefix):].isdigit()),
+                None,
+            )
+            if match is None:
+                break
+            values.append(match)
+        else:
+            key = (*values, path.stem.casefold())
+            index.setdefault(key, str(path))
+    if not index:
+        print(f"[WARN] No indexable RGB videos found under {video_root}")
+    return index
 
-    # Verify tổng kết
-    print(f"\n{'='*70}")
-    print("  KẾT LUẬN")
-    print(f"{'='*70}")
 
-    for csv_name in ["train_cross_view.csv", "val_cross_view.csv"]:
-        csv_path = mf_dir / csv_name
-        if not csv_path.exists():
-            continue
-        df = pd.read_csv(csv_path)
-        if "rgb_path" not in df.columns:
-            print(f"  {csv_name}: chưa có cột rgb_path")
-            continue
-        paths = df["rgb_path"].fillna("").astype(str)
-        n_ok = paths.map(lambda value: Path(value).is_file() if value else False).sum()
-        print(f"  {csv_name}: {n_ok}/{len(df)} clip có RGB")
+def _resolve(row: pd.Series, index: dict[tuple[str, ...], str]) -> str:
+    key = tuple(str(row[column]).casefold() for column in IDENTITY_COLUMNS)
+    return index.get(key, "")
 
-    print()
-    print("  → Sẵn sàng train RGB model!")
+
+def main() -> None:
+    args = parse_args()
+    source_dir = Path(args.source_dir)
+    raw_root = _raw_root(Path(args.raw_root))
+    root_override = Path(args.video_root) if args.video_root else None
+    for protocol in ("cross_scene", "cross_view"):
+        video_root = root_override or (raw_root / f"{protocol}_video")
+        index = _video_index(video_root)
+        for subset in ("train", "val"):
+            manifest_path = source_dir / f"{subset}_{protocol}.csv"
+            if not manifest_path.is_file():
+                raise FileNotFoundError(manifest_path)
+            frame = pd.read_csv(manifest_path)
+            missing = sorted(set(IDENTITY_COLUMNS) - set(frame.columns))
+            if missing:
+                raise ValueError(f"{manifest_path} is missing columns: {missing}")
+            paths = [
+                _resolve(row, index)
+                for _, row in tqdm(
+                    frame.iterrows(), total=len(frame),
+                    desc=f"{protocol}/{subset}",
+                )
+            ]
+            found = sum(bool(path) and Path(path).is_file() for path in paths)
+            frame["rgb_path"] = paths
+            print(f"{protocol}/{subset}: RGB {found}/{len(frame)}")
+            if not args.verify_only:
+                frame.to_csv(manifest_path, index=False)
 
 
 if __name__ == "__main__":

@@ -6,6 +6,8 @@ Output: outputs/runs/imu/{timestamp}/
 Usage:
     python scripts/12_train_imu.py
     python scripts/12_train_imu.py --epochs 60 --tag exp01
+    python scripts/12_train_imu.py --protocol x_view --feature-set gravity_jerk \
+        --arch tcn_temporal_pyramid --seed 42 --tag tcn_temporal_pyramid_seed42
 """
 import argparse
 import random
@@ -23,6 +25,7 @@ import yaml
 from tqdm import tqdm
 
 from src.common.run_logger import RunLogger, Timer, load_class_names
+from src.common.manifest_paths import MM_ACT_PROTOCOLS
 from src.data.imu.dataset import DERIVED_FEATURE_CHANNELS, build_loaders
 from src.models.imu.architectures import build_imu_model
 from src.evaluation.isolated_eval import full_evaluation
@@ -100,10 +103,10 @@ def main():
     ap.add_argument("--classes-cfg", default="configs/classes_mmact.yaml")
     ap.add_argument("--manifest-dir", default=None,
                     help="Override paths.manifest_dir from the data config")
-    ap.add_argument("--split", choices=["cross_view", "cross_scene"], default=None)
+    ap.add_argument("--protocol", choices=MM_ACT_PROTOCOLS, default=None)
     ap.add_argument("--arch", choices=["cnn_bilstm", "cnn_bilstm_cbam", "tcn",
-                                        "transformer", "xtinyhar", "inceptiontime",
-                                        "fckd"],
+                                        "tcn_temporal_pyramid", "transformer",
+                                        "xtinyhar", "inceptiontime", "fckd"],
                     default=None)
     ap.add_argument("--feature-set", choices=["raw", "gravity_jerk", "gravity_jerk_plus"],
                     default=None)
@@ -123,8 +126,12 @@ def main():
     with open(args.config, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
-    split = args.split or cfg.get("split", "cross_scene")
-    cfg["split"] = split
+    with open(args.data_cfg, encoding="utf-8") as f:
+        data_cfg = yaml.safe_load(f)
+    protocol = args.protocol or cfg.get(
+        "protocol", data_cfg["paths"].get("protocol", "x_view")
+    )
+    cfg["protocol"] = protocol
     arch = args.arch or cfg["model"].get("arch", "cnn_bilstm")
     cfg["model"]["arch"] = arch
     feature_set = args.feature_set or cfg.get("feature_set", "raw")
@@ -163,7 +170,7 @@ def main():
     run.info(f"  Device:  {args.device}")
     run.info(f"  Model:   {arch}")
     run.info(f"  Features: {feature_set} ({cfg['model']['in_channels']} channels)")
-    run.info(f"  Split:   {split}")
+    run.info(f"  Protocol: {protocol}")
     run.info(f"  Seed:    {seed}")
     run.info(f"  Epochs:  {cfg['train']['epochs']}")
     run.info(f"  Batch:   {cfg['train']['batch_size']}")
@@ -175,7 +182,7 @@ def main():
     run.info("[Data] Loading...")
     train_loader, val_loader = build_loaders(
         args.manifest_dir, args.data_cfg, cfg["train"]["batch_size"],
-        num_workers=num_workers, split=split, feature_set=feature_set)
+        num_workers=num_workers, protocol=protocol, feature_set=feature_set)
     run.info(f"[Data] train={len(train_loader.dataset)} "
              f"val={len(val_loader.dataset)}")
 

@@ -216,7 +216,10 @@ def simulate_one_session(df, class_names, out_dir, session_id,
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--manifest",
-                    default="data/processed/MMAct/manifests/val_cross_view.csv")
+                    default=(
+                        "data/processed/MMAct/manifests/protocols/"
+                        "x_view/alignment/val.csv"
+                    ))
     ap.add_argument("--classes-cfg", default="configs/classes_mmact.yaml")
     ap.add_argument("--out-root", default="data/processed/MMAct/continuous")
     ap.add_argument("--n-sessions", type=int, default=20)

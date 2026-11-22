@@ -10,7 +10,7 @@ Output:
   data/processed/MMAct/
   ├── skeleton/{split}/{train,val}/{clip_id}.npy     (T, 17, 3)  float32
   ├── imu/{split}/{train,val}/{clip_id}.npy          (T, C)     float32  @50Hz
-  └── manifests/{train,val}_{split}.csv
+  └── source_manifests/{train,val}_{split}.csv
 
 Usage:
   python tools/prepare_mmact.py --split cross_view
@@ -27,7 +27,10 @@ from tqdm import tqdm
 
 
 # ============= CONSTANTS =============
-RAW = Path("data/raw")
+RAW_ROOT = Path("data/raw")
+RAW = (RAW_ROOT / "trimmed"
+       if (RAW_ROOT / "trimmed" / "trimmed_splits").is_dir()
+       else RAW_ROOT)
 OUT = Path("data/processed/MMAct")
 NUM_KP = 17
 CLASSES = [
@@ -186,7 +189,7 @@ def main():
     # ─── Prep output dirs ───
     skel_dir = OUT / "skeleton" / SPLIT
     imu_dir  = OUT / "imu" / SPLIT
-    man_dir  = OUT / "manifests"
+    man_dir  = OUT / "source_manifests"
     for sub in ["train", "val"]:
         (skel_dir / sub).mkdir(parents=True, exist_ok=True)
         (imu_dir  / sub).mkdir(parents=True, exist_ok=True)

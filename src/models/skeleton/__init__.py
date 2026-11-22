@@ -1,5 +1,5 @@
 from .barlow_twins import BarlowTwinsSkeleton
-from .ctrgcn import CTRGCN, CTRGCNPart, DualBranchCTRGCN
+from .ctrgcn import CTRGCN, CTRGCNPart
 from .ms_g3d import MSG3D, build_msg3d
 from .paper_architectures import SkeletonGraphClassifier
 from .sta_gcn import STAGCN, build_sta_gcn
@@ -8,7 +8,6 @@ from .stgcn import STGCN, build_stgcn
 __all__ = [
     "CTRGCN",
     "CTRGCNPart",
-    "DualBranchCTRGCN",
     "STGCN",
     "MSG3D",
     "STAGCN",
@@ -18,7 +17,7 @@ __all__ = [
 ]
 
 
-def build_model(arch: str = "dual", num_classes: int = 35, num_joints: int = 17,
+def build_model(arch: str = "ctrgcn_head", num_classes: int = 35, num_joints: int = 17,
                in_channels: int = None, target_len: int = 64, **kw):
     arch = arch.lower()
     if arch == "stgcn":
@@ -44,7 +43,4 @@ def build_model(arch: str = "dual", num_classes: int = 35, num_joints: int = 17,
     if arch == "ctrgcn_head":
         return CTRGCNPart(num_classes, num_joints, in_channels or 11,
                           target_len, **common)
-    if arch == "dual":
-        return DualBranchCTRGCN(num_classes, num_joints, in_channels or 18,
-                                target_len, **common)
     raise ValueError(f"Unknown architecture: {arch}")

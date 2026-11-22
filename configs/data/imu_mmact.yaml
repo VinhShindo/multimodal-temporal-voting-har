@@ -2,12 +2,10 @@ dataset: mmact
 modality: imu
 
 paths:
-  manifest_dir: data/processed/MMAct/manifests/multimodal_cross_view_3way
-  train_manifest: train_cross_view.csv
-  val_manifest: val_cross_view.csv
-  test_manifest: test_cross_view.csv
-  test_available: true
-  test_note: "Internal group-disjoint multimodal test split"
+  manifest_dir: data/processed/MMAct/manifests/protocols
+  protocol: x_view
+  train_manifest: train.csv
+  val_manifest: val.csv
 
 sensor:
   sampling_rate: 50         # Hz sau resample

@@ -3,11 +3,11 @@ benchmark:
   architecture_audit: configs/fusion/architecture_audit.yaml
   # Train từng architecture từ đầu trước khi chọn best theo val macro-F1.
   # `stgcn` và `ctrgcn` là các backbone paper-family đã được điều chỉnh cho
-  # COCO-17/MMAct. `ms_g3d`, `sta_gcn`, `ctrgcn_head`, `dual` là biến thể
+  # COCO-17/MMAct. `ms_g3d`, `sta_gcn`, `ctrgcn_head` là biến thể
   # custom/ablation và sẽ được ghi provenance trong results.csv.
   # Barlow Twins không nằm trong benchmark kiến trúc chính vì đây là objective
   # SSL lai CE+Barlow, cần một protocol pretrain riêng để so sánh công bằng.
-  split: cross_view
+  split: x_view
   seed: 42
   # Final selected architectures for the controlled fusion experiment.
   architectures:
@@ -36,19 +36,15 @@ fusion:
   min_val_samples: 500
 
 paths:
-  manifest_dir: data/processed/MMAct/manifests/multimodal_cross_view_3way
-  train_manifest: train_cross_view.csv
-  val_manifest: val_cross_view.csv
-  test_manifest: test_cross_view.csv
+  manifest_root: data/processed/MMAct/manifests/protocols
+  protocol: x_view
 
-# Evaluation protocol. All learned fusion methods fit on the same aligned fit
-# split and are evaluated on the same eval split. For an untouched final score,
-# set eval_split to a held-out test manifest after model selection. Set
-# fit_source to oof only after generating oof_train_{probs,labels,clip_ids}.npy.
+# Learned fusion fits on OOF train predictions and reports the validation split.
+# There is no internal test split in the six-protocol workflow.
 evaluation:
-  fit_split: train_cross_view
+  fit_split: train
   fit_source: oof
-  eval_split: test_cross_view
+  eval_split: val
 
 # Learned meta-fusion.  It consumes the aligned fit predictions from the
 # selected modality runs and evaluates on the aligned evaluation predictions.

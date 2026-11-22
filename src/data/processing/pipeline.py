@@ -55,7 +55,7 @@ class DataProcessingPipeline:
     # ============================================================
     def run(self, modality: str = "all",
             force: bool = False,
-            manifest_dir: str = "data/processed/MMAct/manifests") -> dict:
+            manifest_dir: str = "data/processed/MMAct/source_manifests") -> dict:
 
         manifest_dir = Path(manifest_dir)
         results = {}

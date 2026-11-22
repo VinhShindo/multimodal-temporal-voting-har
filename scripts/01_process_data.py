@@ -10,7 +10,7 @@ Usage:
 
 Output:
     data/processed/MMAct/{skeleton,imu,rgb}/{train,val}/*.npy
-    data/processed/MMAct/manifests/{train,val}_cross_view.csv  (updated)
+    data/processed/MMAct/source_manifests/{train,val}_cross_view.csv (updated)
     outputs/runs/process/{timestamp}/log.txt
 """
 import argparse
@@ -28,7 +28,7 @@ from src.data.processing.pipeline import DataProcessingPipeline
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--manifest-dir",
-                    default="data/processed/MMAct/manifests")
+                    default="data/processed/MMAct/source_manifests")
     ap.add_argument("--processed-root", default="data/processed/MMAct")
     ap.add_argument("--split", default="cross_view",
                     choices=["cross_view", "cross_scene"])

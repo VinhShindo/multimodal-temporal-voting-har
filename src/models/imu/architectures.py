@@ -91,6 +91,42 @@ class IMUTCN(BaseModel):
         return self.head(h)
 
 
+class IMUTemporalPyramidTCN(BaseModel):
+    """Residual TCN with temporal pyramid pooling over coarse action phases."""
+
+    def __init__(self, in_channels: int, num_classes: int,
+                 dropout: float = 0.25):
+        super().__init__()
+        channels = 64
+        self.stem = nn.Sequential(
+            nn.Conv1d(in_channels, channels, 5, padding=2, bias=False),
+            nn.BatchNorm1d(channels),
+            nn.GELU(),
+        )
+        self.blocks = nn.Sequential(*[
+            TemporalResidualBlock(channels, dilation, dropout)
+            for dilation in (1, 2, 4, 8, 16)
+        ])
+        self.pool_sizes = (1, 2, 4)
+        pooled_features = channels * sum(self.pool_sizes)
+        self.head = nn.Sequential(
+            nn.LayerNorm(pooled_features),
+            nn.Dropout(dropout),
+            nn.Linear(pooled_features, 128),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(128, num_classes),
+        )
+
+    def forward(self, x):
+        features = self.blocks(self.stem(x))
+        pyramid = [
+            nn.functional.adaptive_avg_pool1d(features, bins).flatten(1)
+            for bins in self.pool_sizes
+        ]
+        return self.head(torch.cat(pyramid, dim=1))
+
+
 class IMUTransformer(BaseModel):
     """Convolutional stem followed by a compact temporal Transformer encoder."""
     def __init__(self, in_channels: int, num_classes: int, dropout: float = 0.2,
@@ -314,6 +350,7 @@ def build_imu_model(arch: str, in_channels: int, num_classes: int,
         "cnn_bilstm": CNNBiLSTM,
         "cnn_bilstm_cbam": CNNBiLSTMCBAM,
         "tcn": IMUTCN,
+        "tcn_temporal_pyramid": IMUTemporalPyramidTCN,
         "transformer": IMUTransformer,
         "xtinyhar": XTinyHAR,
         "inceptiontime": InceptionTime1D,

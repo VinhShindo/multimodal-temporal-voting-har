@@ -3,11 +3,7 @@
 Stream (chọn bằng `stream`):
   joint(2) | joint_bone(4) | joint_bone_motion(6)      ← như cũ (baseline)
   rich(11) = joint(2)+bone(2)+motion(2)+bone_motion(2)+angle(cos,sin)(2)+conf(1)
-  dual(18) = rich(11) || upper(7), upper pad V 9→17 và gói chung 1 tensor (18, T, 17)
-             upper(7) = local_xy(2)+bone(2)+motion(2)+conf(1), 9 khớp thân trên,
-             toạ độ tính so với trung điểm 2 vai TỪNG frame (scale = thân, đã chuẩn hoá bởi processor).
 
-Gói chung 1 tensor để full_evaluation / fusion không phải đổi chữ ký (x, y).
 Dữ liệu NPY đã normalize bởi SkeletonProcessor — KHÔNG normalize lại ở đây.
 """
 import numpy as np
@@ -21,13 +17,9 @@ from src.common.manifest_paths import resolve_train_val_manifests
 
 
 COCO_PARENT = [-1, 0, 0, 1, 2, 0, 0, 5, 6, 7, 8, 5, 6, 11, 12, 13, 14]
-UB_JOINTS = [0, 1, 2, 5, 6, 7, 8, 9, 10]
-UB_PARENT = [-1, 0, 0, 0, 0, 3, 4, 5, 6]      # chỉ số cục bộ (xem ctrgcn.py)
 
 IN_CHANNELS = {"joint": 2, "joint_bone": 4, "joint_bone_motion": 6,
-               "rich": 11, "dual": 18}
-NUM_V = 17
-UB_V = len(UB_JOINTS)
+               "rich": 11}
 
 
 def _parent_arrays(parent):
@@ -37,12 +29,11 @@ def _parent_arrays(parent):
 
 
 _COCO_P = _parent_arrays(COCO_PARENT)
-_UB_P = _parent_arrays(UB_PARENT)
 
 
-def compute_bone(x: np.ndarray, parent=None) -> np.ndarray:
+def compute_bone(x: np.ndarray) -> np.ndarray:
     """x: (T, V, 2) → (T, V, 2) = joint - parent_joint (gốc = 0)."""
-    idx, has = _UB_P if (parent is not None and len(parent) == UB_V) else _COCO_P
+    idx, has = _COCO_P
     bone = x - x[:, idx]
     bone[:, ~has] = 0.0
     return bone
@@ -70,18 +61,6 @@ def rich_features(kps: np.ndarray, step: float, speed_aware: bool = True) -> np.
                           axis=-1).astype(np.float32)
 
 
-def upper_features(kps: np.ndarray, step: float, speed_aware: bool = True) -> np.ndarray:
-    """kps (T, 17, 3) → (T, 9, 7): hệ quy chiếu cục bộ = trung điểm 2 vai mỗi frame."""
-    s = step if speed_aware else 1.0
-    ub = kps[:, UB_JOINTS]                                          # (T, 9, 3)
-    mid_sho = (kps[:, 5, :2] + kps[:, 6, :2]) / 2.0                 # (T, 2)
-    xy = ub[:, :, :2] - mid_sho[:, None, :]
-    bone = compute_bone(xy, UB_PARENT)
-    motion = compute_motion(xy, s)
-    conf = ub[:, :, 2:3]
-    return np.concatenate([xy, bone, motion, conf], axis=-1).astype(np.float32)
-
-
 def make_features(kps: np.ndarray, step: float, stream: str,
                   speed_aware: bool = True) -> np.ndarray:
     """Trả về (C, T, 17)."""
@@ -99,11 +78,6 @@ def make_features(kps: np.ndarray, step: float, stream: str,
     g = g.transpose(2, 0, 1)                                        # (11, T, 17)
     if stream == "rich":
         return np.ascontiguousarray(g)
-    if stream == "dual":
-        u = upper_features(kps, step, speed_aware).transpose(2, 0, 1)   # (7, T, 9)
-        u_pad = np.zeros((u.shape[0], u.shape[1], NUM_V), dtype=np.float32)
-        u_pad[:, :, :UB_V] = u
-        return np.ascontiguousarray(np.concatenate([g, u_pad], axis=0))  # (18, T, 17)
     raise ValueError(f"Unknown stream: {stream}")
 
 
@@ -165,11 +139,12 @@ def build_loaders(manifest_dir: str | None, cfg_path: str,
                   batch_size: int, num_workers: int = 4,
                   stream: str = "joint_bone_motion",
                   aug_level: str = "light",
-                  cache: bool = True):
+                  cache: bool = True,
+                  protocol: str | None = None):
     from torch.utils.data import DataLoader, WeightedRandomSampler
 
     train_manifest, val_manifest = resolve_train_val_manifests(
-        cfg_path, manifest_dir)
+        cfg_path, manifest_dir, protocol)
     train_ds = SkeletonDataset(str(train_manifest),
                                cfg_path, augment=True, stream=stream,
                                aug_level=aug_level, cache=cache)

@@ -1,6 +1,6 @@
 dataset: mmact
 modality: imu
-split: cross_view
+protocol: x_view
 seed: 42
 
 model:

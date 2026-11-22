@@ -56,8 +56,9 @@ def _load_official_encoder_weights(model: nn.Module) -> None:
         converted[target_prefix + "attention.attention.value.weight"] = v_weights
         converted[target_prefix + "attention.attention.query.bias"] = \
             source[source_prefix + "attn.q_bias"]
-        converted[target_prefix + "attention.attention.key.bias"] = torch.zeros_like(
-            source[source_prefix + "attn.q_bias"])
+        key_bias = target_prefix + "attention.attention.key.bias"
+        if key_bias in target:
+            converted[key_bias] = torch.zeros_like(source[source_prefix + "attn.q_bias"])
         converted[target_prefix + "attention.attention.value.bias"] = \
             source[source_prefix + "attn.v_bias"]
 

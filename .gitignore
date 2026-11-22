@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Ignore raw datasets but keep their local structure guide.
+data/raw
+data/processed
+!data/raw/
+data/raw/*
+!data/raw/README.md

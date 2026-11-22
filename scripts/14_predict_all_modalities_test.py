@@ -27,7 +27,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from src.common.manifest_paths import (
-    resolve_manifest_path,
+    MM_ACT_PROTOCOLS,
     resolve_train_val_manifests,
 )
 from src.data.imu.dataset import (
@@ -50,15 +50,16 @@ DATA_CONFIGS = {
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Predict test (and optional train) for all three modalities"
+        description="Predict an explicitly supplied external evaluation manifest"
     )
     parser.add_argument("--skeleton-run-dir", required=True)
     parser.add_argument("--imu-run-dir", required=True)
     parser.add_argument("--rgb-run-dir", required=True)
     parser.add_argument("--manifest-dir", default=None,
-                        help="Override paths.manifest_dir in data configs")
-    parser.add_argument("--test-manifest", default=None,
-                        help="Explicit test manifest; defaults to config")
+                        help="Optional protocol-manifest root override")
+    parser.add_argument("--protocol", choices=MM_ACT_PROTOCOLS, default="x_view")
+    parser.add_argument("--test-manifest", required=True,
+                        help="External evaluation manifest; no internal test split is configured")
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--num-workers", type=int, default=8)
     parser.add_argument("--skeleton-batch-size", type=int, default=256)
@@ -96,13 +97,19 @@ def build_model_and_datasets(
     run_dir: Path,
     data_cfg_path: str,
     manifest_dir: str | None,
+    protocol: str,
     test_manifest: Path,
     batch_size: int,
     num_workers: int,
     rgb_cache_max_clips: int,
 ):
     run_cfg = load_yaml(run_dir / "config.yaml")
-    train_manifest, _ = resolve_train_val_manifests(data_cfg_path, manifest_dir)
+    protocol = str(run_cfg.get("protocol", protocol))
+    modality_manifest_dir = (
+        Path(manifest_dir) / protocol / modality if manifest_dir else None
+    )
+    train_manifest, _ = resolve_train_val_manifests(
+        data_cfg_path, modality_manifest_dir, protocol)
     train_cfg = run_cfg.get("train", {}) or {}
     model_cfg = run_cfg.get("model", {}) or {}
 
@@ -134,12 +141,10 @@ def build_model_and_datasets(
 
     elif modality == "imu":
         feature_set = str(run_cfg.get("feature_set", "raw"))
-        split = str(run_cfg.get("split", "cross_view"))
-        # Compute normalization only from train data.  The helper also keeps
-        # the existing IMU cross-view purge policy consistent with training.
+        # Compute normalization only from the selected protocol's train data.
         train_loader, _ = build_imu_loaders(
-            manifest_dir, data_cfg_path, batch_size, num_workers=0,
-            split=split, feature_set=feature_set,
+            modality_manifest_dir, data_cfg_path, batch_size, num_workers=0,
+            protocol=protocol, feature_set=feature_set,
         )
         stats = train_loader.dataset.stats
         train_ds = IMUDataset(
@@ -250,15 +255,13 @@ def main() -> None:
         "rgb": args.rgb_batch_size,
     }
 
-    test_manifest = Path(args.test_manifest) if args.test_manifest else None
-    if test_manifest is None:
-        test_manifest = resolve_manifest_path(
-            DATA_CONFIGS["skeleton"], "test", args.manifest_dir)
-    if test_manifest is None or not test_manifest.exists():
+    test_manifest = Path(args.test_manifest)
+    if not test_manifest.is_file():
         raise FileNotFoundError(f"Missing test manifest: {test_manifest}")
 
     summary = {
         "test_manifest": str(test_manifest),
+        "protocol": args.protocol,
         "export_train": bool(args.export_train),
         "device": str(device),
         "modalities": {},
@@ -270,12 +273,13 @@ def main() -> None:
             raise FileNotFoundError(f"Missing checkpoint: {ckpt_path}")
         data_cfg = DATA_CONFIGS[modality]
         print(f"\n{'=' * 70}\n{modality.upper()}\n{'=' * 70}")
-        model, train_ds, train_loader, test_ds, test_loader, _ = \
+        model, train_ds, train_loader, test_ds, test_loader, run_cfg = \
             build_model_and_datasets(
-                modality, run_dir, data_cfg, args.manifest_dir,
+                modality, run_dir, data_cfg, args.manifest_dir, args.protocol,
                 test_manifest, batch_sizes[modality], args.num_workers,
                 args.rgb_cache_max_clips,
             )
+        protocol = str(run_cfg.get("protocol", args.protocol))
         checkpoint = torch.load(
             ckpt_path, map_location=device, weights_only=False)
         model.load_state_dict(checkpoint["model_state"])
@@ -295,7 +299,11 @@ def main() -> None:
         }
         if args.export_train:
             train_manifest, _ = resolve_train_val_manifests(
-                data_cfg, args.manifest_dir)
+                data_cfg,
+                (Path(args.manifest_dir) / protocol / modality
+                 if args.manifest_dir else None),
+                protocol,
+            )
             train_probs, train_labels = collect_predictions(
                 model, train_loader, modality, device)
             item["train"] = save_split(

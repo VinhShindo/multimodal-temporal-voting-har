@@ -39,6 +39,7 @@ from sklearn.metrics import f1_score, accuracy_score
 import yaml
 
 from src.common.run_logger import RunLogger, load_class_names
+from src.common.manifest_paths import MM_ACT_PROTOCOLS
 from src.fusion.align import align_all, align_selected_runs, get_run_architecture
 from src.fusion.attention import ATTENTION_METHODS, fit_attention
 from src.fusion.voting import fuse_probs
@@ -63,7 +64,7 @@ EXPERIMENTS = [
 
 
 def parse_architecture_overrides(values: list[str]) -> dict:
-    """Parse repeated CLI values such as ``skeleton=dual,ctrgcn_head``."""
+    """Parse repeated CLI values such as ``skeleton=ctrgcn,ctrgcn_head``."""
     overrides = {}
     for value in values:
         if "=" not in value:
@@ -259,7 +260,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/fusion/voting.yaml")
     ap.add_argument("--manifest-dir", default=None,
-                    help="Override paths.manifest_dir from the fusion config")
+                    help="Override the exact protocol alignment-manifest directory")
+    ap.add_argument("--protocol", choices=MM_ACT_PROTOCOLS, default=None)
     ap.add_argument("--classes-cfg", default="configs/classes_mmact.yaml")
     ap.add_argument("--runs-root", default="outputs/runs")
     ap.add_argument("--tag", default=None)
@@ -279,16 +281,44 @@ def main():
                     help="Use an explicit selected run directory for a modality")
     ap.add_argument("--skip-rgb", action="store_true",
                     help="Bỏ qua RGB (ví dụ chỉ có quick-test)")
+    ap.add_argument(
+        "--allow-incomplete-audit",
+        action="store_true",
+        help="Continue when the manifest audit is not PASS; results may not "
+             "represent a complete upload.",
+    )
     args = ap.parse_args()
 
     with open(args.config, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
-    args.manifest_dir = (
-        args.manifest_dir
-        or (cfg.get("paths", {}) or {}).get("manifest_dir")
-        or "data/processed/MMAct/manifests"
+    paths_cfg = cfg.get("paths", {}) or {}
+    protocol = args.protocol or paths_cfg.get(
+        "protocol", cfg.get("benchmark", {}).get("split", "x_view")
     )
+    cfg.setdefault("benchmark", {})["split"] = protocol
+    manifest_root = paths_cfg.get(
+        "manifest_root", "data/processed/MMAct/manifests/protocols"
+    )
+    args.manifest_dir = args.manifest_dir or str(
+        Path(manifest_root) / protocol / "alignment"
+    )
+    alignment_dir = Path(args.manifest_dir)
+    if alignment_dir.name == "alignment":
+        audit_path = alignment_dir.parent.parent / "protocol_manifest_audit.json"
+        if audit_path.is_file():
+            manifest_audit = json.loads(audit_path.read_text(encoding="utf-8"))
+            if (manifest_audit.get("status") != "PASS"
+                    and not args.allow_incomplete_audit):
+                raise SystemExit(
+                    f"Fusion requires complete protocol manifests; "
+                    f"status={manifest_audit.get('status')}, audit={audit_path}"
+                )
+            if manifest_audit.get("status") != "PASS":
+                print(
+                    f"WARNING: proceeding with manifest audit status="
+                    f"{manifest_audit.get('status')} by explicit request"
+                )
 
     try:
         architecture_filters = dict(
@@ -304,8 +334,8 @@ def main():
         ap.error(str(error))
 
     evaluation_cfg = cfg.get("evaluation", {}) or {}
-    fit_split = str(evaluation_cfg.get("fit_split", "train_cross_view"))
-    eval_split = str(evaluation_cfg.get("eval_split", "val_cross_view"))
+    fit_split = str(evaluation_cfg.get("fit_split", "train"))
+    eval_split = str(evaluation_cfg.get("eval_split", "val"))
     fit_source = str(evaluation_cfg.get("fit_source", "train"))
     if fit_source not in {"train", "oof"}:
         ap.error("evaluation.fit_source must be 'train' or 'oof'")

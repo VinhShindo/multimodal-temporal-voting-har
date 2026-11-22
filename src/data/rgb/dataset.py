@@ -250,11 +250,12 @@ def build_loaders(manifest_dir: str | None, cfg_path: str,
                   cache_in_memory: bool = False,
                   cache_max_clips: int = 4,
                   prefetch_factor: int = 1,
-                  persistent_workers: bool = True):
+                  persistent_workers: bool = True,
+                  protocol: str | None = None):
     from torch.utils.data import DataLoader, WeightedRandomSampler
 
     train_manifest, val_manifest = resolve_train_val_manifests(
-        cfg_path, manifest_dir)
+        cfg_path, manifest_dir, protocol)
     train_ds = RGBDataset(str(train_manifest),
                           cfg_path, augment=True, max_samples=max_samples,
                           cache_in_memory=cache_in_memory,

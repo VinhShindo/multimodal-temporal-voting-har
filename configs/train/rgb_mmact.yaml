@@ -3,7 +3,7 @@ modality: rgb
 
 model:
   name: video_classifier
-  arch: mc3_18                # nhẹ nhất
+  arch: mc3_18                # 6 protocol: top-3 mọi nơi, đứng nhất 2 lần; trade-off gọn/chính xác
   num_classes: 35
   dropout: 0.3
   pretrained: true

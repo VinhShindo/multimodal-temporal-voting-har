@@ -136,15 +136,12 @@ def compute_stats(manifest_path: str, feature_set: str = "raw",
 
 
 def build_loaders(manifest_dir: str | None, cfg_path: str, batch_size: int,
-                  num_workers: int = 4, split: str = "cross_scene",
+                  num_workers: int = 4, protocol: str | None = None,
                   feature_set: str = "raw"):
     from torch.utils.data import DataLoader, WeightedRandomSampler
 
-    if split not in {"cross_view", "cross_scene"}:
-        raise ValueError(f"Unsupported IMU split: {split}")
-
     train_manifest_path, val_manifest_path = resolve_train_val_manifests(
-        cfg_path, manifest_dir)
+        cfg_path, manifest_dir, protocol)
     train_manifest = str(train_manifest_path)
     val_manifest = str(val_manifest_path)
     with open(cfg_path, encoding="utf-8") as f:
@@ -152,18 +149,21 @@ def build_loaders(manifest_dir: str | None, cfg_path: str, batch_size: int,
     sampling_rate = float(data_cfg["sensor"]["sampling_rate"])
     train_manifest_df = _load_imu_manifest(train_manifest)
     val_manifest_df = _load_imu_manifest(val_manifest)
-    val_events = set(map(tuple, val_manifest_df[IMU_EVENT_COLUMNS].to_numpy()))
     train_events = set(map(tuple, train_manifest_df[IMU_EVENT_COLUMNS].to_numpy()))
+    val_events = set(map(tuple, val_manifest_df[IMU_EVENT_COLUMNS].to_numpy()))
     event_overlap = train_events & val_events
-    purge_events = event_overlap if split == "cross_view" else set()
+    if event_overlap:
+        raise ValueError(
+            f"IMU manifest leakage: {len(event_overlap)} physical events overlap "
+            f"between {protocol or 'configured'} train and val; "
+            f"example={next(iter(event_overlap))}"
+        )
 
-    stats = compute_stats(train_manifest, feature_set, sampling_rate,
-                          exclude_events=purge_events)
+    stats = compute_stats(train_manifest, feature_set, sampling_rate)
     print(f"[IMU] stats: mu={stats['mu']}, std={stats['std']}")
 
     train_ds = IMUDataset(train_manifest, cfg_path, stats, training=True,
-                          feature_set=feature_set,
-                          exclude_events=purge_events)
+                          feature_set=feature_set)
     val_ds = IMUDataset(val_manifest, cfg_path, stats, training=False,
                         feature_set=feature_set)
 
@@ -176,13 +176,11 @@ def build_loaders(manifest_dir: str | None, cfg_path: str, batch_size: int,
             f"IMU leakage: {len(overlap)} physical recordings occur in both "
             f"{split} train and val; example={example}. Use a group-disjoint split."
         )
-    if purge_events:
-        print(f"[IMU] cross_view purged {len(purge_events)} validation physical "
-              f"events from training; remaining train={len(train_ds)}")
     if not len(train_ds) or not len(val_ds):
-        raise ValueError(f"Empty IMU dataset for split={split}")
+        raise ValueError(f"Empty IMU dataset for protocol={protocol}")
 
-    print(f"[IMU] split={split} unique train={len(train_ds)} val={len(val_ds)}")
+    print(f"[IMU] protocol={protocol or 'configured'} "
+          f"unique train={len(train_ds)} val={len(val_ds)}")
 
     labels = train_ds.df["class_id"].values
     counts = np.bincount(labels, minlength=int(labels.max()) + 1)

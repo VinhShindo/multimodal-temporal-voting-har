@@ -5,7 +5,7 @@ Output: outputs/runs/rgb/{timestamp}/
 
 Usage:
     python scripts/11_train_rgb.py --quick-test
-    python scripts/11_train_rgb.py --arch r2plus1d_18 --tag exp01
+    python scripts/11_train_rgb.py --arch mc3_18 --tag exp01
     python scripts/11_train_rgb.py --resume outputs/runs/rgb/20260927_235612_mc3_18/best.pt
 """
 import argparse
@@ -25,6 +25,7 @@ import yaml
 from tqdm import tqdm
 
 from src.common.run_logger import RunLogger, Timer, load_class_names
+from src.common.manifest_paths import MM_ACT_PROTOCOLS
 from src.data.rgb.dataset import build_loaders
 from src.models.rgb.video_backbone import build_video_model, SUPPORTED_ARCHS
 from src.evaluation.isolated_eval import full_evaluation
@@ -102,6 +103,7 @@ def main(argv=None, shared_loaders=None):
     ap.add_argument("--classes-cfg", default="configs/classes_mmact.yaml")
     ap.add_argument("--manifest-dir", default=None,
                     help="Override paths.manifest_dir from the data config")
+    ap.add_argument("--protocol", choices=MM_ACT_PROTOCOLS, default=None)
     ap.add_argument("--device",
                     default="cuda" if torch.cuda.is_available() else "cpu")
     ap.add_argument("--arch", default=None, choices=SUPPORTED_ARCHS)
@@ -147,6 +149,10 @@ def main(argv=None, shared_loaders=None):
     # ── Load config ──
     with open(args.config, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
+    with open(args.data_cfg, encoding="utf-8") as f:
+        data_cfg = yaml.safe_load(f)
+    protocol = args.protocol or data_cfg["paths"].get("protocol", "x_view")
+    cfg["protocol"] = protocol
 
     arch = args.arch or cfg["model"].get("arch", "mc3_18")
     cfg["model"]["arch"] = arch
@@ -168,6 +174,10 @@ def main(argv=None, shared_loaders=None):
     if args.benchmark_architectures:
         if shared_loaders is not None:
             raise ValueError("Benchmark orchestration cannot reuse nested shared loaders")
+        if args.resume and len(args.benchmark_architectures) != 1:
+            raise ValueError(
+                "--resume requires exactly one --benchmark-architectures value"
+            )
         benchmark_loaders = build_loaders(
             args.manifest_dir, args.data_cfg, cfg["train"]["batch_size"],
             num_workers=num_workers, max_samples=args.max_samples,
@@ -176,7 +186,8 @@ def main(argv=None, shared_loaders=None):
             cache_in_memory=False,
             cache_max_clips=int(cfg["train"].get("cache_max_clips", 4)),
             prefetch_factor=int(cfg["train"].get("prefetch_factor", 1)),
-            persistent_workers=bool(cfg["train"].get("persistent_workers", True)))
+            persistent_workers=bool(cfg["train"].get("persistent_workers", True)),
+            protocol=protocol)
         tag_prefix = args.benchmark_tag_prefix or "rgb_benchmark"
         for benchmark_arch in args.benchmark_architectures:
             benchmark_args = [
@@ -185,6 +196,7 @@ def main(argv=None, shared_loaders=None):
                 "--classes-cfg", args.classes_cfg,
                 "--device", args.device,
                 "--arch", benchmark_arch,
+                "--protocol", protocol,
                 "--seed", str(args.seed),
                 "--tag", f"{tag_prefix}_{benchmark_arch}",
                 "--quiet-progress",
@@ -203,6 +215,8 @@ def main(argv=None, shared_loaders=None):
                 benchmark_args.append("--amp" if args.amp else "--no-amp")
             if args.no_pretrained:
                 benchmark_args.append("--no-pretrained")
+            if args.resume:
+                benchmark_args.extend(["--resume", args.resume])
             if args.max_samples is not None:
                 benchmark_args.extend(["--max-samples", str(args.max_samples)])
             print(f"\n[RGB benchmark] Training {benchmark_arch} with shared loaders")
@@ -275,7 +289,8 @@ def main(argv=None, shared_loaders=None):
             cache_in_memory=bool(cfg["train"].get("cache_in_memory", False)),
             cache_max_clips=int(cfg["train"].get("cache_max_clips", 4)),
             prefetch_factor=int(cfg["train"].get("prefetch_factor", 1)),
-            persistent_workers=bool(cfg["train"].get("persistent_workers", True)))
+            persistent_workers=bool(cfg["train"].get("persistent_workers", True)),
+            protocol=protocol)
     else:
         train_loader, val_loader = shared_loaders
     run.info(f"[Data] train={len(train_loader.dataset)} "

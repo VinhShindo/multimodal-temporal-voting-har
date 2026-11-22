@@ -35,7 +35,7 @@ def parse_args():
     ap.add_argument("--imu-root", default="data/raw/trimmed_sensor")
     ap.add_argument(
         "--output-manifest",
-        default="data/processed/MMAct/manifests/test_cross_view.csv",
+        default="data/processed/MMAct/external_test/cross_view.csv",
     )
     ap.add_argument("--output-audit", default=None)
     return ap.parse_args()
@@ -48,7 +48,7 @@ def main():
     classes_path = Path(args.classes_config)
     output_manifest = Path(args.output_manifest)
     output_audit = Path(args.output_audit or output_manifest.with_name(
-        "test_cross_view_audit.json"))
+        "external_test_audit.json"))
 
     if not video_root.is_dir():
         raise FileNotFoundError(f"Missing video root: {video_root}")

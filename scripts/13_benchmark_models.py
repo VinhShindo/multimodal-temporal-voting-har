@@ -19,26 +19,28 @@ import pandas as pd
 import yaml
 
 from src.models.architecture_registry import architecture_metadata
+from src.common.manifest_paths import MM_ACT_PROTOCOLS
 
 
 MODALITY_DEFAULT_SPLIT = {
-    "imu": "cross_view",
-    "skeleton": "cross_view",
-    "rgb": "cross_view",
+    "imu": "x_view",
+    "skeleton": "x_view",
+    "rgb": "x_view",
 }
+DEFAULT_RGB_BENCHMARK_EPOCHS = 10
 DEFAULT_ARCHITECTURES = {
-        "imu": ["cnn_bilstm", "cnn_bilstm_cbam", "tcn", "transformer", "xtinyhar",
+    "imu": ["cnn_bilstm", "cnn_bilstm_cbam", "tcn", "transformer", "xtinyhar",
             "inceptiontime", "fckd"],
-    "skeleton": ["stgcn", "ms_g3d", "ctrgcn", "sta_gcn", "ctrgcn_head", "dual"],
-        "rgb": ["r2plus1d_18", "r3d_18", "mc3_18", "s3d", "mvit_v2_s",
+    "skeleton": ["stgcn", "ms_g3d", "ctrgcn", "sta_gcn", "ctrgcn_head"],
+    "rgb": ["r3d_18", "mc3_18", "s3d", "mvit_v2_s",
             "videomae", "videomae2"],
 }
 # Kept callable for a separately reported ablation, but excluded from the
 # default architecture benchmark because its training objective is different.
 OPTIONAL_ARCHITECTURES = {
     "skeleton": {"barlow_twins"},
-    "imu": set(),
-    "rgb": set(),
+    "imu": {"tcn_temporal_pyramid"},
+    "rgb": {"mc3_18_temporal_pyramid"},
 }
 RESULT_COLUMNS = [
     "run", "result_type", "architecture", "stream", "feature_set", "split", "seed",
@@ -49,20 +51,25 @@ RESULT_COLUMNS = [
 
 
 def audit_split(manifest_dir: Path, modality: str, split: str,
-                allow_camera_overlap: bool = False) -> dict:
-    train_manifest = manifest_dir / f"train_{split}.csv"
-    val_manifest = manifest_dir / f"val_{split}.csv"
+                allow_camera_overlap: bool = False,
+                enforce_protocol_groups: bool = True) -> dict:
+    train_manifest = manifest_dir / "train.csv"
+    val_manifest = manifest_dir / "val.csv"
     if not train_manifest.exists() or not val_manifest.exists():
         raise FileNotFoundError(f"Missing manifests for {modality}/{split}")
 
     train_df = pd.read_csv(train_manifest)
     val_df = pd.read_csv(val_manifest)
     path_column = f"{modality}_path"
+    filtered_frames = []
     for frame in (train_df, val_df):
         if path_column not in frame:
             raise ValueError(f"Manifest missing {path_column}")
-        frame.drop(frame[frame[path_column].isna() | frame[path_column].eq("")].index,
-                   inplace=True)
+        filtered_frames.append(
+            frame.loc[frame[path_column].notna()
+                      & frame[path_column].astype(str).str.strip().ne("")].copy()
+        )
+    train_df, val_df = filtered_frames
 
     train_ids = set(train_df["clip_id"])
     val_ids = set(val_df["clip_id"])
@@ -77,24 +84,42 @@ def audit_split(manifest_dir: Path, modality: str, split: str,
         "val_rows": int(len(val_df)),
         "clip_id_overlap": 0,
     }
-    if modality == "imu":
-        event_columns = ["subject", "scene", "session", "action"]
-        train_events = set(map(tuple, train_df[event_columns].drop_duplicates().to_numpy()))
-        val_events = set(map(tuple, val_df[event_columns].drop_duplicates().to_numpy()))
-        event_overlap = train_events & val_events
-        report["train_unique_events"] = len(train_events)
-        report["val_unique_events"] = len(val_events)
-        report["physical_event_overlap"] = len(event_overlap)
-        if event_overlap and split == "cross_view":
-            report["training_event_purge_required"] = len(event_overlap)
-            report["physical_event_overlap_after_purge"] = 0
-            report["event_purge_strategy"] = "exclude_validation_events_from_training"
-        elif event_overlap:
-            raise ValueError(
-                f"IMU {split} leaks {len(event_overlap)} physical events; "
-                f"example={next(iter(event_overlap))}"
-            )
-    elif split == "cross_view":
+    event_columns = ["subject", "scene", "session", "action"]
+    train_events = set(map(
+        tuple, train_df[event_columns].drop_duplicates().to_numpy()
+    ))
+    val_events = set(map(
+        tuple, val_df[event_columns].drop_duplicates().to_numpy()
+    ))
+    event_overlap = train_events & val_events
+    report["train_unique_events"] = len(train_events)
+    report["val_unique_events"] = len(val_events)
+    report["physical_event_overlap"] = len(event_overlap)
+    if modality == "imu" and event_overlap:
+        raise ValueError(
+            f"IMU {split} leaks {len(event_overlap)} physical events; "
+            f"example={next(iter(event_overlap))}"
+        )
+    if modality != "imu" and enforce_protocol_groups:
+        group_columns = {
+            "x_scene": ("subject", "scene", "session"),
+            "x_view": ("subject", "cam"),
+            "x_sub_scene": ("subject", "scene"),
+            "x_sub_view": ("subject", "cam"),
+            "x_session_scene": ("subject", "scene", "session"),
+            "x_session_view": ("subject", "cam", "session"),
+        }[split]
+        train_groups = set(map(
+            tuple, train_df[list(group_columns)].astype(str).to_numpy()
+        ))
+        val_groups = set(map(
+            tuple, val_df[list(group_columns)].astype(str).to_numpy()
+        ))
+        report["group_columns"] = list(group_columns)
+        report["group_overlap"] = len(train_groups & val_groups)
+        if train_groups & val_groups:
+            raise ValueError(f"{modality}/{split} group overlap")
+    if modality != "imu" and split == "x_view" and enforce_protocol_groups:
         train_cameras = sorted(train_df["cam"].dropna().unique().tolist())
         val_cameras = sorted(val_df["cam"].dropna().unique().tolist())
         camera_overlap = set(train_cameras) & set(val_cameras)
@@ -102,7 +127,7 @@ def audit_split(manifest_dir: Path, modality: str, split: str,
         report["val_cameras"] = val_cameras
         report["camera_overlap"] = sorted(camera_overlap)
         if camera_overlap and not allow_camera_overlap:
-            raise ValueError(f"{modality} cross_view camera overlap: {camera_overlap}")
+            raise ValueError(f"{modality} x_view camera overlap: {camera_overlap}")
         if camera_overlap and allow_camera_overlap:
             report["camera_overlap_policy"] = "allowed_for_group_holdout"
     return report
@@ -131,7 +156,10 @@ def discover_runs(run_root: Path, modality: str, split: str,
         except (OSError, ValueError, yaml.YAMLError):
             continue
 
-        configured_split = config.get("split", metadata.get("split"))
+        configured_split = config.get(
+            "protocol",
+            config.get("split", metadata.get("protocol", metadata.get("split"))),
+        )
         if modality == "imu" and not configured_split:
             excluded_imu_without_split += 1
             continue
@@ -203,10 +231,7 @@ def build_train_command(modality: str, arch: str, split: str, seed: int,
         "--manifest-dir", manifest_dir,
     ]
     command.append("--quiet-progress")
-    if modality == "imu":
-        command.extend(["--split", split])
-    elif split != "cross_view":
-        raise ValueError(f"{modality} trainer currently supports cross_view only")
+    command.extend(["--protocol", split])
     if epochs is not None:
         command.extend(["--epochs", str(epochs)])
     if num_workers is not None:
@@ -221,12 +246,14 @@ def build_train_command(modality: str, arch: str, split: str, seed: int,
 def launch_architectures(modality: str, architectures: list[str], split: str,
                          seed: int, epochs: int | None, timestamp: str,
                          output_dir: Path,
-                         manifest_dir: str = "data/processed/MMAct/manifests",
+                         manifest_dir: str = "data/processed/MMAct/manifests/protocols/x_view",
                          max_samples: int | None = None,
                          num_workers: int | None = None,
                          no_pretrained: bool = False,
                          batch_size: int | None = None,
-                         lr: float | None = None) -> tuple[set[str], list[dict]]:
+                         lr: float | None = None,
+                         resume_checkpoint: str | None = None
+                         ) -> tuple[set[str], list[dict]]:
     run_root = Path("outputs/runs") / modality
     launched_run_names = set()
     failures = []
@@ -238,6 +265,7 @@ def launch_architectures(modality: str, architectures: list[str], split: str,
             "--benchmark-architectures", *architectures,
             "--benchmark-tag-prefix", tag_prefix,
             "--seed", str(seed),
+            "--protocol", split,
             "--manifest-dir", manifest_dir,
             "--quiet-progress",
         ]
@@ -253,6 +281,8 @@ def launch_architectures(modality: str, architectures: list[str], split: str,
             command.extend(["--batch-size", str(batch_size)])
         if lr is not None:
             command.extend(["--lr", str(lr)])
+        if resume_checkpoint is not None:
+            command.extend(["--resume", resume_checkpoint])
         print(f"Training rgb architectures in one process; log={log_path}")
         with log_path.open("w", encoding="utf-8") as log_file:
             process = subprocess.run(
@@ -261,7 +291,7 @@ def launch_architectures(modality: str, architectures: list[str], split: str,
             suffix = f"_{tag_prefix}_{architecture}"
             run_dirs = [
                 path for path in run_root.iterdir()
-                if path.is_dir() and path.name.endswith(suffix)
+                if path.is_dir() and suffix in path.name
                 and (path / "metrics.json").exists()
             ] if run_root.exists() else []
             if run_dirs:
@@ -371,7 +401,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--modality", required=True,
                         choices=["imu", "skeleton", "rgb"])
-    parser.add_argument("--split", choices=["cross_view", "cross_scene"], default=None)
+    parser.add_argument("--protocol", choices=MM_ACT_PROTOCOLS, default=None,
+                        help="Dataset evaluation protocol")
     parser.add_argument("--mode", choices=["train", "reuse"], default="train",
                         help="train = train each architecture from scratch; reuse = collect existing runs")
     parser.add_argument("--architectures", nargs="+", default=None,
@@ -380,13 +411,19 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=None,
                         help="override configured epochs for every architecture")
     parser.add_argument("--manifest-dir", default=None,
-                        help="Override paths.manifest_dir from the modality data config")
+                        help="Override the exact <protocol>/<modality> manifest directory")
     parser.add_argument("--max-samples", type=int, default=None,
                         help="limit RGB train/validation samples for a smoke benchmark")
     parser.add_argument("--num-workers", type=int, default=None,
                         help="override dataloader worker count")
     parser.add_argument("--no-pretrained", action="store_true",
                         help="disable pretrained RGB weights (useful for smoke tests)")
+    parser.add_argument(
+        "--resume",
+        default=None,
+        help="Resume one RGB architecture from a checkpoint; requires "
+             "--modality rgb and exactly one architecture.",
+    )
     parser.add_argument("--batch-size", type=int, default=None,
                         help="override training batch size")
     parser.add_argument("--lr", type=float, default=None,
@@ -396,15 +433,18 @@ def main() -> None:
     parser.add_argument("--latest-per-architecture", action="store_true",
                         help="in reuse mode, keep only the newest matching run per architecture")
     parser.add_argument("--allow-camera-overlap", action="store_true",
-                        help=("Allow camera overlap for the new group-disjoint "
-                              "multimodal holdout; physical events remain disjoint."))
+                        help="Allow camera-ID overlap when auditing x_view")
+    parser.add_argument("--oof-fold", action="store_true",
+                        help="Audit an internal event-grouped OOF fold, not the protocol boundary")
+    parser.add_argument("--allow-incomplete-manifests", action="store_true",
+                        help="Allow training on a generator audit marked INCOMPLETE")
     parser.add_argument("--run-contains", default=None,
                         help="in reuse mode, include only runs whose name contains this string")
     parser.add_argument("--run-root", default="outputs/runs")
     parser.add_argument("--output-root", default="outputs/benchmark")
     args = parser.parse_args()
 
-    split = args.split or MODALITY_DEFAULT_SPLIT[args.modality]
+    split = args.protocol or MODALITY_DEFAULT_SPLIT[args.modality]
     if args.manifest_dir is None:
         data_cfg_by_modality = {
             "skeleton": "configs/data/skeleton_mmact.yaml",
@@ -413,11 +453,22 @@ def main() -> None:
         }
         with open(data_cfg_by_modality[args.modality], encoding="utf-8") as stream:
             data_cfg = yaml.safe_load(stream) or {}
-        args.manifest_dir = str(
-            (data_cfg.get("paths", {}) or {}).get(
-                "manifest_dir", "data/processed/MMAct/manifests"
-            )
+        manifest_root = (data_cfg.get("paths", {}) or {}).get(
+            "manifest_dir", "data/processed/MMAct/manifests/protocols"
         )
+        args.manifest_dir = str(Path(manifest_root) / split / args.modality)
+    manifest_audit_status = None
+    if not args.oof_fold:
+        audit_path = Path(args.manifest_dir).parent.parent / "protocol_manifest_audit.json"
+        if audit_path.is_file():
+            manifest_audit = json.loads(audit_path.read_text(encoding="utf-8"))
+            manifest_audit_status = manifest_audit.get("status")
+            if (manifest_audit.get("status") != "PASS"
+                    and not args.allow_incomplete_manifests):
+                raise SystemExit(
+                    f"Protocol manifests are {manifest_audit.get('status')}; "
+                    f"refusing benchmark. Audit: {audit_path}"
+                )
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     output_dir = Path(args.output_root) / args.modality / f"{split}_{timestamp}"
     output_dir.mkdir(parents=True, exist_ok=False)
@@ -426,6 +477,7 @@ def main() -> None:
         audit = audit_split(
             Path(args.manifest_dir), args.modality, split,
             allow_camera_overlap=args.allow_camera_overlap,
+            enforce_protocol_groups=not args.oof_fold,
         )
     except (FileNotFoundError, ValueError) as error:
         audit = {
@@ -446,7 +498,15 @@ def main() -> None:
         raise SystemExit(str(error))
 
     audit["audit_status"] = "PASS"
+    audit["generator_manifest_status"] = manifest_audit_status
+    audit["incomplete_manifests_override"] = bool(
+        args.allow_incomplete_manifests and manifest_audit_status != "PASS"
+    )
     architectures = args.architectures or DEFAULT_ARCHITECTURES[args.modality]
+    if args.resume and (
+        args.modality != "rgb" or len(architectures) != 1
+    ):
+        parser.error("--resume requires --modality rgb and one architecture")
     allowed_architectures = (set(DEFAULT_ARCHITECTURES[args.modality])
                              | OPTIONAL_ARCHITECTURES[args.modality])
     invalid_architectures = sorted(set(architectures) - allowed_architectures)
@@ -458,18 +518,22 @@ def main() -> None:
 
     selected_run_names = None
     failures = []
+    benchmark_epochs = args.epochs
+    if (args.modality == "rgb" and args.mode == "train"
+            and benchmark_epochs is None):
+        benchmark_epochs = DEFAULT_RGB_BENCHMARK_EPOCHS
+
     effective_batch_size = args.batch_size
-    if (args.modality == "rgb" and effective_batch_size is None
-            and {"videomae", "videomae2"}.intersection(architectures)):
-        effective_batch_size = 16
+    if args.modality == "rgb" and effective_batch_size is None:
+        with open("configs/train/rgb_mmact.yaml", encoding="utf-8") as stream:
+            rgb_train_config = yaml.safe_load(stream) or {}
+        effective_batch_size = int(rgb_train_config["train"]["batch_size"])
     if args.mode == "train":
-        if args.modality in {"rgb", "skeleton"} and split != "cross_view":
-            raise SystemExit(f"{args.modality} training currently requires --split cross_view")
         selected_run_names, failures = launch_architectures(
-            args.modality, architectures, split, args.seed, args.epochs,
+            args.modality, architectures, split, args.seed, benchmark_epochs,
             timestamp, output_dir, args.manifest_dir, args.max_samples,
             args.num_workers, args.no_pretrained, effective_batch_size,
-            args.lr)
+            args.lr, args.resume)
 
     results, excluded_without_split = discover_runs(
         Path(args.run_root) / args.modality, args.modality, split,
@@ -502,6 +566,7 @@ def main() -> None:
         audit["max_samples_per_split"] = args.max_samples
         audit["pretrained_weights"] = not args.no_pretrained
         audit["batch_size"] = effective_batch_size
+        audit["epochs"] = benchmark_epochs
     audit["requested_architectures"] = architectures if args.mode == "train" else []
     audit["seed"] = args.seed if args.mode == "train" else None
     audit["failed_architectures"] = failures
@@ -517,6 +582,7 @@ def main() -> None:
     ])
     if args.modality == "rgb" and args.mode == "train":
         lines.append("- Dataset loading: preloaded once and reused across architectures")
+        lines.append(f"- Training epochs: {benchmark_epochs}")
         if args.max_samples is not None:
             lines.append(
                 f"- Smoke subset: at most {args.max_samples} samples per split; "
@@ -533,7 +599,7 @@ def main() -> None:
         if excluded_without_split:
             lines.append(
                 f"- Excluded {excluded_without_split} legacy IMU run(s) without explicit split metadata; "
-                "rerun training with --split cross_scene to include them."
+                "rerun training with --protocol <protocol> to include them."
             )
     for failure in failures:
         lines.append(
@@ -548,15 +614,10 @@ def main() -> None:
     if chart_names:
         lines.append("Charts: " + ", ".join(f"`{name}`" for name in chart_names) + ".")
     if args.modality == "imu":
-        if split == "cross_view":
-            lines.insert(
-                4,
-                f"- Cross-view IMU validation events purged from train: "
-                f"{audit.get('training_event_purge_required', 0)} "
-                f"(overlap after purge: {audit.get('physical_event_overlap_after_purge', 0)})"
-            )
-        else:
-            lines.insert(4, f"- Unique physical IMU event overlap: {audit['physical_event_overlap']}")
+        lines.insert(
+            4,
+            f"- Unique physical IMU event overlap: {audit['physical_event_overlap']}"
+        )
         if excluded_without_split:
             lines.append(f"- Excluded legacy IMU runs without explicit split metadata: {excluded_without_split}")
     (output_dir / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")

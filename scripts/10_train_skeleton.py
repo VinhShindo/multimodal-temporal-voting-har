@@ -4,14 +4,11 @@ Train CTR-GCN trên MMAct Skeleton — full logging + evaluation.
 Kiến trúc (--arch):
   ctrgcn       baseline 10 layer + GAP          (stream: joint / joint_bone / joint_bone_motion / rich)
   ctrgcn_head  + PartTransformerHead            (stream: rich)            ← ablation R2
-  dual         + upper-body branch + head       (stream: dual)            ← ablation R3 / R4
 
 Ablation gợi ý (cùng seed, cùng wd):
   R0  python scripts/10_train_skeleton.py --arch ctrgcn      --stream joint_bone_motion --tag R0
   R1  python scripts/10_train_skeleton.py --arch ctrgcn      --stream rich              --tag R1
   R2  python scripts/10_train_skeleton.py --arch ctrgcn_head --stream rich              --tag R2
-  R3  python scripts/10_train_skeleton.py --arch dual        --stream dual              --tag R3
-  R4  như R3 nhưng đặt sequence.target_len: 96 trong configs/data/skeleton_mmact.yaml
 
 Output: outputs/runs/skeleton/{timestamp}_{tag}/ (config, log, history, best.pt, metrics, confusion matrix...)
 """
@@ -32,6 +29,7 @@ import yaml
 from tqdm import tqdm
 
 from src.common.run_logger import RunLogger, Timer, load_class_names
+from src.common.manifest_paths import MM_ACT_PROTOCOLS
 from src.data.skeleton.dataset import build_loaders, IN_CHANNELS
 from src.models.skeleton import BarlowTwinsSkeleton, build_model
 from src.evaluation.isolated_eval import full_evaluation
@@ -40,7 +38,7 @@ from src.evaluation.isolated_eval import full_evaluation
 DEFAULT_STREAM = {
     "stgcn": "joint_bone_motion", "ms_g3d": "joint_bone_motion",
     "ctrgcn": "joint_bone_motion", "sta_gcn": "joint_bone_motion",
-    "barlow_twins": "joint_bone_motion", "ctrgcn_head": "rich", "dual": "dual",
+    "barlow_twins": "joint_bone_motion", "ctrgcn_head": "rich",
 }
 
 
@@ -187,11 +185,12 @@ def main():
     ap.add_argument("--classes-cfg", default="configs/classes_mmact.yaml")
     ap.add_argument("--manifest-dir", default=None,
                     help="Override paths.manifest_dir from the data config")
+    ap.add_argument("--protocol", choices=MM_ACT_PROTOCOLS, default=None)
     ap.add_argument("--device",
                     default="cuda" if torch.cuda.is_available() else "cpu")
     ap.add_argument("--arch", default=None, choices=[
         "stgcn", "ms_g3d", "ctrgcn", "sta_gcn", "barlow_twins",
-        "ctrgcn_head", "dual"])
+        "ctrgcn_head"])
     ap.add_argument("--stream", default=None, choices=list(IN_CHANNELS.keys()))
     ap.add_argument("--aug", default=None, choices=["none", "light", "strong", "view"])
     ap.add_argument("--optim", default=None, choices=["adamw", "sgd"])
@@ -218,6 +217,8 @@ def main():
         cfg = yaml.safe_load(f)
     with open(args.data_cfg, encoding="utf-8") as f:
         dcfg = yaml.safe_load(f)
+    protocol = args.protocol or dcfg["paths"].get("protocol", "x_view")
+    cfg["protocol"] = protocol
     tcfg, mcfg = cfg["train"], cfg["model"]
 
     # CLI override
@@ -231,14 +232,10 @@ def main():
     if args.optim is not None:      tcfg["optimizer"] = args.optim
     if args.aug is not None:        tcfg["aug_level"] = args.aug
 
-    arch = args.arch or mcfg.get("arch", "dual")
+    arch = args.arch or mcfg.get("arch", "ctrgcn_head")
     stream = args.stream or DEFAULT_STREAM[arch]
     mcfg["arch"] = arch
     mcfg["stream"] = stream
-    if arch == "dual" and stream != "dual":
-        raise SystemExit("--arch dual yêu cầu --stream dual")
-    if arch != "dual" and stream == "dual":
-        raise SystemExit(f"--arch {arch} không dùng stream dual")
     in_ch = IN_CHANNELS[stream]
     target_len = dcfg["sequence"]["target_len"]
 
@@ -271,7 +268,7 @@ def main():
     train_loader, val_loader = build_loaders(
         args.manifest_dir, args.data_cfg, tcfg["batch_size"],
         num_workers=num_workers, stream=stream, aug_level=aug_level,
-        cache=not args.no_cache)
+        cache=not args.no_cache, protocol=protocol)
     run.info(f"[Data] train={len(train_loader.dataset)} val={len(val_loader.dataset)}")
 
     # ── Model ──

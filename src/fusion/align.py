@@ -48,13 +48,19 @@ def get_run_architecture(run_dir: Path) -> str | None:
 
 
 def manifest_protocol_split(manifest_csv: Path) -> str:
-    """Return cross_view/cross_scene independent of train/val/test prefix."""
+    """Return the protocol encoded in the protocol directory."""
     stem = Path(manifest_csv).stem
+    protocol = Path(manifest_csv).parent.parent.name
+    if protocol in {
+        "x_scene", "x_view", "x_sub_scene", "x_sub_view",
+        "x_session_scene", "x_session_view",
+    }:
+        return protocol
     for prefix in ("train_", "val_", "test_"):
         if stem.startswith(prefix):
             return stem[len(prefix):]
     raise ValueError(
-        f"Manifest phải bắt đầu bằng train_, val_ hoặc test_: {manifest_csv}")
+        f"Cannot determine protocol from manifest path: {manifest_csv}")
 
 
 def find_best_compatible_run(runs_root: Path, modality: str,
@@ -92,7 +98,10 @@ def find_best_compatible_run(runs_root: Path, modality: str,
                            f"(allowed: {sorted(allowed_architectures)})")
                 continue
 
-        run_split = config.get("split", metadata.get("split"))
+        run_split = config.get(
+            "protocol",
+            config.get("split", metadata.get("protocol", metadata.get("split"))),
+        )
         if modality == "imu" and not run_split:
             if log_fn:
                 log_fn(f"  [skip] imu: {run_dir.name} has no split metadata; "
@@ -128,6 +137,13 @@ def find_best_compatible_run(runs_root: Path, modality: str,
 
 def reconstruct_clip_ids(manifest_csv: Path, modality: str) -> list:
     """Trả về list clip_id theo đúng thứ tự dataset filter."""
+    manifest_csv = Path(manifest_csv)
+    if manifest_csv.parent.name == "alignment":
+        modality_manifest = (
+            manifest_csv.parent.parent / modality / manifest_csv.name
+        )
+        if modality_manifest.is_file():
+            manifest_csv = modality_manifest
     df = pd.read_csv(manifest_csv)
 
     if modality == "skeleton":
